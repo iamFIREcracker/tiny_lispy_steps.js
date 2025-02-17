@@ -111,12 +111,13 @@ function tryApplyProcedure(cont) {
     let evald1 = cont.evald1;
     if (!evald1) {
       const env = new Env(cont.env);
-      const [_, params, ...body] = proc;
+      let [_, params, body] = proc;
       for (let i = 0; i < params.length; i++) {
         env.define(params[i], args[i] ?? null);
       }
+
       const bcont = {
-        expr: taggedList(body, "PROGN") ? body : ["PROGN", ...body],
+        expr: body,
         env,
       };
       return { ...bcont, cont: { ...cont, evald1: bcont } };
@@ -158,9 +159,15 @@ function tryEvalSpecialOperator(cont) {
 
 function tryEvalLambda(cont) {
   if (taggedList(cont.expr, "LAMBDA")) {
+    let [params, ...body] = cont.expr.slice(1);
+    if (body.length === 1) {
+      body = body[0];
+    } else {
+      body = ["PROGN", ...body];
+    }
     return {
       ...cont,
-      ret: [PROCEDURE, cont.expr[1], ["PROGN", ...cont.expr.slice(2)]],
+      ret: [PROCEDURE, params, body],
     };
   }
 }
@@ -186,10 +193,15 @@ function tryEvalIf(cont) {
 
 function tryEvalDefun(cont) {
   if (taggedList(cont.expr, "DEFUN")) {
-    const [_, name, params, ...body] = cont.expr;
+    let [_, name, params, ...body] = cont.expr;
     let procd;
     if (!cont.procd) {
-      procd = eval({ expr: ["LAMBDA", params, ...body], env: cont.env });
+      if (body.length === 1) {
+        body = body[0];
+      } else {
+        body = ["PROGN", ...body];
+      }
+      procd = eval({ expr: ["LAMBDA", params, body], env: cont.env });
       return { ...procd, cont: { ...cont, procd } };
     }
     if (!cont.procd.hasOwnProperty("ret")) {
