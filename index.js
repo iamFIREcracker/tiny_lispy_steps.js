@@ -102,9 +102,6 @@ function tryApplyCompiled(cont) {
     return { ...cont, ret: proc[1].apply(proc[1], args) };
   }
 }
-tryApplyCompiled({
-  evald: [{ ret: [COMPILED, (a, b) => a + b] }, { ret: 1 }, { ret: 2 }],
-});
 
 var PROCEDURE = Symbol.for("PROCEDURE");
 

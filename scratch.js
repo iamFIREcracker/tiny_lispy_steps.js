@@ -29,7 +29,9 @@ tryEvalProgn({
 });
 evalc(_);
 
-tryEvalApplication({ expr: ["+", 1, 2], env: mkGlobalEnv() });
+tryApplyCompiled({
+  evald: [{ ret: [COMPILED, (a, b) => a + b] }, { ret: 1 }, { ret: 2 }],
+});
 evalc(_);
 
 evalc({ expr: [["LAMBDA", ["X"], ["+", "X", 1]], 10], env: mkGlobalEnv() });
@@ -44,19 +46,46 @@ function run(expr) {
   return ret;
 }
 assertEqual(run([["LAMBDA", ["X"], ["+", "X", 1]], 10]), 11);
-run(["PROGN", ["DEFUN", "FACTORIAL", ["N"],
-                ["IF", ["=", "N", 1],
-                    1,
-                    ["*", ["FACTORIAL", ["-", "N", 1]], "N"]]],
-              "FACTORIAL"]);
-assertEqual(run(["PROGN", ["DEFUN", "FACTORIAL", ["N"],
-                            ["IF", ["=", "N", 1],
-                                1,
-                                ["*", ["FACTORIAL", ["-", "N", 1]], "N"]]],
-                          ["FACTORIAL", 10]]),
-                3628800);
-run(["PROGN", ["DEFUN", "FACTORIAL", ["N"],
-                            ["IF", ["=", "N", 1],
-                                1,
-                                ["*", ["FACTORIAL", ["-", "N", 1]], "N"]]],
-                          ["FACTORIAL", 100]]);
+run([
+  "PROGN",
+  [
+    "DEFUN",
+    "FACTORIAL",
+    ["N"],
+    ["IF", ["=", "N", 1], 1, ["*", ["FACTORIAL", ["-", "N", 1]], "N"]],
+  ],
+  "FACTORIAL",
+]);
+assertEqual(
+  run([
+    "PROGN",
+    [
+      "DEFUN",
+      "FACTORIAL",
+      ["N"],
+      ["IF", ["=", "N", 1], 1, ["*", ["FACTORIAL", ["-", "N", 1]], "N"]],
+    ],
+    ["FACTORIAL", 10],
+  ]),
+  3628800,
+);
+run([
+  "PROGN",
+  [
+    "DEFUN",
+    "FACTORIAL",
+    ["N"],
+    ["IF", ["=", "N", 1], 1, ["*", ["FACTORIAL", ["-", "N", 1]], "N"]],
+  ],
+  ["FACTORIAL", 100],
+]);
+
+evalc([
+  [
+    "PROMPT",
+    "'FOO",
+    ["LAMBDA", [], ["+", 34, ["ABORT", "'FOO"]]],
+    ["LAMBDA", ["K"], "K"],
+  ],
+  8,
+]);
