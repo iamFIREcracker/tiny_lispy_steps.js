@@ -46,9 +46,9 @@ function parseAtom(s) {
       if (!isNaN(atom)) {
         atom = Number(atom);
       } else if (atom.startsWith('"') && atom.endsWith('"')) {
-        atom = atom.slice(1, -1);
+        atom = ["STRING", atom.slice(1, -1)];
       } else {
-        atom = ["SYM", atom.toUpperCase()];
+        atom = atom.toUpperCase();
       }
     }
     return atom;
