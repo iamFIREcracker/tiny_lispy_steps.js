@@ -97,7 +97,10 @@ function evalc(cont) {
 function applyc(cont) {
   // console.log({ type: "APPLYC", cont });
   return (
-    tryApplyCompiled(cont) ?? tryApplyProcedure(cont) ?? notSupportedError()
+    tryApplyCompiled(cont) ??
+    tryApplyProcedure(cont) ??
+    tryApplyContinuation(cont) ??
+    notSupportedError()
   );
 
   function notSupportedError() {
@@ -131,7 +134,38 @@ function tryApplyProcedure(cont) {
       };
       return { ...bcont, cont: { ...cont, evald1: bcont } };
     } else if (!evald1.hasOwnProperty("ret")) {
-      console.assert(cont.resumedFrom.hasOwnProperty("ret"));
+      assert(cont.resumedFrom.hasOwnProperty("ret"));
+      evald1 = cont.resumedFrom;
+    }
+    return { ...cont, evald1, ret: evald1.ret };
+  }
+}
+
+var CONTINUATION = Symbol.for("CONTINUATION");
+
+function tryApplyContinuation(cont) {
+  const [proc, ..._] = cont.evald.map((p) => p.ret);
+  if (taggedList(proc, CONTINUATION)) {
+    let evald1 = cont.evald1;
+    if (!evald1) {
+      const [_, kcont] = proc;
+      assert(cont.evald[1].hasOwnProperty("ret")); // XXX multipleargs
+      const evald1 = {};
+      const cont1 = { ...cont, evald1 };
+      const kcont1 = reify(kcont, cont1);
+      Object.assign(evald1, kcont1); // XXX cyclic dependency here...
+      return {
+        ...kcont1,
+        // XXX multipleargs
+        resumedFrom: { ...cont, ret: cont.evald[1].ret },
+      };
+
+      function reify(cont, bottom) {
+        if (!cont) return bottom;
+        return { ...cont, cont: reify(cont.cont, bottom) };
+      }
+    } else if (!evald1.hasOwnProperty("ret")) {
+      assert(cont.resumedFrom.hasOwnProperty("ret"));
       evald1 = cont.resumedFrom;
     }
     return { ...cont, evald1, ret: evald1.ret };
@@ -139,7 +173,12 @@ function tryApplyProcedure(cont) {
 }
 
 function tryEvalSelfEvaluating(cont) {
-  if (typeof cont.expr === "number" || typeof cont.expr === "boolean") {
+  if (
+    typeof cont.expr === "number" ||
+    typeof cont.expr === "boolean" ||
+    taggedList(cont.expr, "STRING") ||
+    taggedList(cont.expr, CONTINUATION)
+  ) {
     return { ...cont, ret: cont.expr };
   }
 }
@@ -155,6 +194,8 @@ var SPECIAL_OPERATORS = {
   IF: (s) => tryEvalIf(s),
   DEFUN: (s) => tryEvalDefun(s),
   PROGN: (s) => tryEvalProgn(s),
+  PROMPT: (s) => tryEvalPrompt(s),
+  ABORT: (s) => tryEvalAbort(s),
 };
 
 function tryEvalSpecialOperator(cont) {
@@ -248,9 +289,89 @@ function tryEvalProgn(cont) {
       evald = [...evald, arcont];
       return { ...arcont, cont: { ...cont, evald, env } };
     }
-    console.assert(evald[evald.length - 1].hasOwnProperty("ret"));
+    assert(evald[evald.length - 1].hasOwnProperty("ret"));
     return { ...cont, evald, env, ret: evald[evald.length - 1].ret };
   }
+}
+
+function tryEvalPrompt(cont) {
+  if (taggedList(cont.expr, "PROMPT")) {
+    const [_, tag, thunk, handler] = cont.expr;
+    let thunkd = cont.thunkd ?? false;
+    if (!thunkd) {
+      thunkd = true;
+      return {
+        expr: [thunk], // call the thunk!
+        evald: [evalc({ expr: thunk })], // XXX review this -- saves some evaluation down the line
+        env: cont.env,
+        cont: { ...cont, thunkd, tag },
+      };
+    }
+
+    if (cont.abortd) {
+      const { k, evald } = cont.resumedFrom;
+      return {
+        ...cont,
+        expr: [handler, k, ...evald.map((v) => v.ret)],
+        evald: [evalc({ expr: handler }), { ret: k }, ...evald], // XXX review this -- saves some evaluation down the line
+      };
+    }
+
+    assert(cont.resumedFrom.hasOwnProperty("ret"));
+    return { ...cont, ret: cont.resumedFrom.ret };
+  }
+}
+
+function tryEvalAbort(cont) {
+  if (taggedList(cont.expr, "ABORT")) {
+    const [_, tag, ...values] = cont.expr;
+
+    let evald = cont.evald ?? [];
+    for (let i = 0; i < evald.length; i++) {
+      const arcont = evald[i];
+      if (!arcont.hasOwnProperty("ret")) {
+        assert(cont.resumedFrom.hasOwnProperty("ret"));
+        evald = [...evald.slice(0, i), cont.resumedFrom];
+        break;
+      }
+    }
+    if (evald.length < values.length) {
+      const arcont = { expr: values[evald.length], env: cont.env };
+      evald = [...evald, arcont];
+      return { ...arcont, cont: { ...cont, evald } };
+    }
+
+    let abortd = cont.abortd ?? false;
+    if (!abortd) {
+      abortd = true;
+
+      let tcont = cont.cont;
+      while (tcont && tcont.tag !== tag) {
+        tcont = tcont.cont;
+      }
+      assert(tcont, `Could not find PROMPT with tag: ${tag}`);
+      const k = [CONTINUATION, limited({ ...cont, evald, abortd })];
+      return {
+        ...tcont,
+        abortd: true,
+        resumedFrom: { ...cont, k, evald, abortd },
+      };
+
+      function limited(cont) {
+        if (!cont) return;
+        else if (cont.tag === tag) return;
+        else if (cont.cont) return { ...cont, cont: limited(cont.cont) };
+      }
+    }
+    assert(cont.resumedFrom.hasOwnProperty("ret"));
+    return { ...cont, ret: cont.resumedFrom.ret };
+  }
+}
+
+function printK(cont) {
+  if (!cont) return;
+  console.log(cont.expr);
+  printK(cont.cont);
 }
 
 function tryEvalApplication(cont) {
@@ -298,5 +419,5 @@ function run(s) {
 // - evald1: for procedure application
 // - tstcon: for IF
 // - procd: for DEFUN
+// - k, abortd: for ABORT
 // LET
-// SHIFT/RESET

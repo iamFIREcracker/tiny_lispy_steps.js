@@ -29,6 +29,17 @@ tryEvalProgn({
 });
 evalc(_);
 
+tryEvalPrompt({
+  expr: [
+    "PROMPT",
+    "'FOO",
+    ["LAMBDA", [], ["+", 34, ["ABORT", "'FOO"]]],
+    ["LAMBDA", ["K"], "K"],
+  ],
+  env: mkGlobalEnv(),
+});
+evalc(_);
+
 tryApplyCompiled({
   evald: [{ ret: [COMPILED, (a, b) => a + b] }, { ret: 1 }, { ret: 2 }],
 });
@@ -55,12 +66,19 @@ assertEqual(
              n
              (+ (fib (- n 1)) (fib (- n 2)))))
 
-evalc([
-  [
-    "PROMPT",
-    "'FOO",
-    ["LAMBDA", [], ["+", 34, ["ABORT", "'FOO"]]],
-    ["LAMBDA", ["K"], "K"],
-  ],
-  8,
-]);
+        (fib 10))`),
+  55,
+);
+
+assertEqual(
+  eval(`(prompt :foo (lambda () (+ 34 (abort :foo 42)))
+         (lambda (k n) n))`),
+  42,
+);
+assertEqual(
+  run(`(* ((prompt :foo (lambda () (+ 34 (abort :foo)))
+             (lambda (k) k))
+            8)
+          2)`),
+  84,
+);
