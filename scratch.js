@@ -1,6 +1,3 @@
-var assert = require("node:assert/strict").ok;
-var assertEqual = require("node:assert/strict").deepEqual;
-
 mkGlobalEnv();
 
 tryApplyProcedure({
@@ -16,11 +13,14 @@ tryEvalSelfEvaluating({ expr: true });
 tryEvalVariable({ expr: "FOO", env: new Env(null, "FOO", "bar") });
 
 tryEvalLambda({ expr: ["LAMBDA", ["X"], ["+", "X", 1]] });
+tryEvalLambda({ expr: ["LAMBDA", ["X"], ["+", "X", 1], 42] });
+tryEvalLambda({ expr: ["LAMBDA", ["X"], ["PROGN", ["+", "X", 1], 42]] });
+JSON.stringify(_);
 
 tryEvalIf({ expr: ["IF", true, 1, 0] });
 evalc(_);
 
-tryEvalDefun({ expr: ["DEFUN", "1+", ["X"], ["+", "X", 1]]})
+tryEvalDefun({ expr: ["DEFUN", "1+", ["X"], ["+", "X", 1]] });
 evalc(_);
 
 tryEvalProgn({
@@ -37,48 +37,23 @@ evalc(_);
 evalc({ expr: [["LAMBDA", ["X"], ["+", "X", 1]], 10], env: mkGlobalEnv() });
 evalc(_);
 
-function run(expr) {
-  var ret = null;
-  for (const cont of evale(expr, mkGlobalEnv())) {
-    ret = cont.ret;
-    // console.log(cont);
-  }
-  return ret;
-}
-assertEqual(run([["LAMBDA", ["X"], ["+", "X", 1]], 10]), 11);
-run([
-  "PROGN",
-  [
-    "DEFUN",
-    "FACTORIAL",
-    ["N"],
-    ["IF", ["=", "N", 1], 1, ["*", ["FACTORIAL", ["-", "N", 1]], "N"]],
-  ],
-  "FACTORIAL",
-]);
+assertEqual(run(`((lambda (x) (+ x 1)) 10)`), 11);
 assertEqual(
-  run([
-    "PROGN",
-    [
-      "DEFUN",
-      "FACTORIAL",
-      ["N"],
-      ["IF", ["=", "N", 1], 1, ["*", ["FACTORIAL", ["-", "N", 1]], "N"]],
-    ],
-    ["FACTORIAL", 10],
-  ]),
-  3628800,
+  run(`(progn
+         (defun factorial (n)
+           (if (= n 1)
+             1
+             (* (factorial (- n 1)) n)))
+
+        (factorial 100))`),
+  9.33262154439441e157,
 );
-run([
-  "PROGN",
-  [
-    "DEFUN",
-    "FACTORIAL",
-    ["N"],
-    ["IF", ["=", "N", 1], 1, ["*", ["FACTORIAL", ["-", "N", 1]], "N"]],
-  ],
-  ["FACTORIAL", 100],
-]);
+assertEqual(
+  run(`(progn
+         (defun fib (n)
+           (if (< n 2)
+             n
+             (+ (fib (- n 1)) (fib (- n 2)))))
 
 evalc([
   [

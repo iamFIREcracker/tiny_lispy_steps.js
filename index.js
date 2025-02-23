@@ -20,6 +20,7 @@ Env.prototype.define = function (symbol, value) {
 };
 
 var COMPILED = Symbol.for("COMPILED");
+
 var COMPILED_PROCEDURES = [
   ["+", (...args) => args.reduce((a, b) => a + b, 0)],
   [
@@ -32,7 +33,7 @@ var COMPILED_PROCEDURES = [
 
   // // Comparison operations
   ["=", (a, b) => a === b],
-  // ["<", (a, b) => a < b],
+  ["<", (a, b) => a < b],
   // [">", (a, b) => a > b],
 
   // // List operations
@@ -40,6 +41,14 @@ var COMPILED_PROCEDURES = [
   // ["CONS", (a, b) => [a, ...b]],
   // ["CAR", (list) => list[0]],
   // ["CDR", (list) => list.slice(1)],
+
+  [
+    "DBG",
+    (...args) => {
+      console.log(...args);
+      return args[0];
+    },
+  ],
 ];
 
 function mkGlobalEnv() {
@@ -142,10 +151,10 @@ function tryEvalVariable(cont) {
 }
 
 var SPECIAL_OPERATORS = {
-  LAMBDA: tryEvalLambda,
-  IF: tryEvalIf,
-  DEFUN: tryEvalDefun,
-  PROGN: tryEvalProgn,
+  LAMBDA: (s) => tryEvalLambda(s),
+  IF: (s) => tryEvalIf(s),
+  DEFUN: (s) => tryEvalDefun(s),
+  PROGN: (s) => tryEvalProgn(s),
 };
 
 function tryEvalSpecialOperator(cont) {
@@ -160,16 +169,20 @@ function tryEvalSpecialOperator(cont) {
 function tryEvalLambda(cont) {
   if (taggedList(cont.expr, "LAMBDA")) {
     let [params, ...body] = cont.expr.slice(1);
-    if (body.length === 1) {
-      body = body[0];
-    } else {
-      body = ["PROGN", ...body];
-    }
     return {
       ...cont,
-      ret: [PROCEDURE, params, body],
+      ret: mkProcedure(params, ...body),
     };
   }
+}
+
+function mkProcedure(params, ...body) {
+  if (body.length === 1) {
+    body = body[0];
+  } else {
+    body = ["PROGN", ...body];
+  }
+  return [PROCEDURE, params, body];
 }
 
 function tryEvalIf(cont) {
@@ -181,7 +194,7 @@ function tryEvalIf(cont) {
       return { ...tstcon, cont: { ...cont, tstcon } };
     }
     if (!tstcon.hasOwnProperty("ret")) {
-      console.assert(cont.resumedFrom.hasOwnProperty("ret"));
+      assert(cont.resumedFrom.hasOwnProperty("ret"));
       tstcon = cont.resumedFrom;
     }
     if (tstcon.ret) {
@@ -201,11 +214,11 @@ function tryEvalDefun(cont) {
       } else {
         body = ["PROGN", ...body];
       }
-      procd = eval({ expr: ["LAMBDA", params, body], env: cont.env });
+      procd = { expr: ["LAMBDA", params, body], env: cont.env };
       return { ...procd, cont: { ...cont, procd } };
     }
     if (!cont.procd.hasOwnProperty("ret")) {
-      console.assert(cont.resumedFrom.hasOwnProperty("ret"));
+      assert(cont.resumedFrom.hasOwnProperty("ret"));
       procd = cont.resumedFrom;
     }
     const env = new Env(cont.env);
@@ -223,7 +236,7 @@ function tryEvalProgn(cont) {
     for (let i = 0; i < evald.length; i++) {
       let arcont = evald[i];
       if (!arcont.hasOwnProperty("ret")) {
-        console.assert(cont.resumedFrom.hasOwnProperty("ret"));
+        assert(cont.resumedFrom.hasOwnProperty("ret"));
         evald = [...evald.slice(0, i), cont.resumedFrom];
         env = cont.resumedFrom.env;
         break;
@@ -247,7 +260,7 @@ function tryEvalApplication(cont) {
     for (let i = 0; i < evald.length; i++) {
       const arcont = evald[i];
       if (!arcont.hasOwnProperty("ret")) {
-        console.assert(cont.resumedFrom.hasOwnProperty("ret"));
+        assert(cont.resumedFrom.hasOwnProperty("ret"));
         evald = [...evald.slice(0, i), cont.resumedFrom];
         break;
       }
@@ -268,6 +281,16 @@ function* evale(expr, env) {
     yield cont;
   } while (!cont.hasOwnProperty("ret") || cont.cont);
   return cont.ret;
+}
+
+function run(s) {
+  const expr = readFromString(s);
+  let ret = null;
+  for (const cont of evale(expr, mkGlobalEnv())) {
+    ret = cont.ret;
+    // console.log(cont);
+  }
+  return ret;
 }
 
 // Datamodeling:
