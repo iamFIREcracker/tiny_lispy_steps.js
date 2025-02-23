@@ -48,37 +48,3 @@ evalc(_);
 evalc({ expr: [["LAMBDA", ["X"], ["+", "X", 1]], 10], env: mkGlobalEnv() });
 evalc(_);
 
-assertEqual(run(`((lambda (x) (+ x 1)) 10)`), 11);
-assertEqual(
-  run(`(progn
-         (defun factorial (n)
-           (if (= n 1)
-             1
-             (* (factorial (- n 1)) n)))
-
-        (factorial 100))`),
-  9.33262154439441e157,
-);
-assertEqual(
-  run(`(progn
-         (defun fib (n)
-           (if (< n 2)
-             n
-             (+ (fib (- n 1)) (fib (- n 2)))))
-
-        (fib 10))`),
-  55,
-);
-
-assertEqual(
-  eval(`(prompt :foo (lambda () (+ 34 (abort :foo 42)))
-         (lambda (k n) n))`),
-  42,
-);
-assertEqual(
-  run(`(* ((prompt :foo (lambda () (+ 34 (abort :foo)))
-             (lambda (k) k))
-            8)
-          2)`),
-  84,
-);

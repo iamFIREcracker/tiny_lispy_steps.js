@@ -128,11 +128,11 @@ function tryApplyProcedure(cont) {
         env.define(params[i], args[i] ?? null);
       }
 
-      const bcont = {
+      const bdcont = {
         expr: body,
         env,
       };
-      return { ...bcont, cont: { ...cont, evald1: bcont } };
+      return { ...bdcont, cont: { ...cont, evald1: bdcont } };
     } else if (!evald1.hasOwnProperty("ret")) {
       assert(cont.resumedFrom.hasOwnProperty("ret"));
       evald1 = cont.resumedFrom;
@@ -194,6 +194,7 @@ var SPECIAL_OPERATORS = {
   IF: (s) => tryEvalIf(s),
   DEFUN: (s) => tryEvalDefun(s),
   PROGN: (s) => tryEvalProgn(s),
+  LET: (s) => tryEvalLet(s),
   PROMPT: (s) => tryEvalPrompt(s),
   ABORT: (s) => tryEvalAbort(s),
 };
@@ -218,12 +219,16 @@ function tryEvalLambda(cont) {
 }
 
 function mkProcedure(params, ...body) {
+  return [PROCEDURE, params, prognify(body)];
+}
+
+function prognify(body) {
   if (body.length === 1) {
     body = body[0];
   } else {
     body = ["PROGN", ...body];
   }
-  return [PROCEDURE, params, body];
+  return body;
 }
 
 function tryEvalIf(cont) {
@@ -250,12 +255,7 @@ function tryEvalDefun(cont) {
     let [_, name, params, ...body] = cont.expr;
     let procd;
     if (!cont.procd) {
-      if (body.length === 1) {
-        body = body[0];
-      } else {
-        body = ["PROGN", ...body];
-      }
-      procd = { expr: ["LAMBDA", params, body], env: cont.env };
+      procd = { expr: ["LAMBDA", params, prognify(body)], env: cont.env };
       return { ...procd, cont: { ...cont, procd } };
     }
     if (!cont.procd.hasOwnProperty("ret")) {
@@ -291,6 +291,48 @@ function tryEvalProgn(cont) {
     }
     assert(evald[evald.length - 1].hasOwnProperty("ret"));
     return { ...cont, evald, env, ret: evald[evald.length - 1].ret };
+  }
+}
+
+function tryEvalLet(cont) {
+  if (taggedList(cont.expr, "LET")) {
+    const [_, bindings, ...body] = cont.expr;
+    let evald = cont.evald ?? [];
+    let env = cont.env;
+
+    for (let i = 0; i < evald.length; i++) {
+      let bncont = evald[i];
+      if (!bncont.hasOwnProperty("ret")) {
+        assert(cont.resumedFrom.hasOwnProperty("ret"));
+        evald = [...evald.slice(0, i), cont.resumedFrom];
+        env = cont.resumedFrom.env;
+        break;
+      }
+    }
+
+    if (evald.length < bindings.length) {
+      const bncont = { expr: bindings[evald.length][1], env };
+      evald = [...evald, bncont];
+      return { ...bncont, cont: { ...cont, evald, env } };
+    }
+
+    let evald1 = cont.evald1 ?? false;
+    if (!evald1) {
+      const env = new Env(cont.env);
+      for (let i = 0; i < bindings.length; i++) {
+        env.define(bindings[i][0], evald[i].ret);
+      }
+
+      const bdcont = {
+        expr: prognify(body),
+        env,
+      };
+      return { ...bdcont, cont: { ...cont, evald, evald1: bdcont } };
+    } else if (!evald1.hasOwnProperty("ret")) {
+      assert(cont.resumedFrom.hasOwnProperty("ret"));
+      evald1 = cont.resumedFrom;
+    }
+    return { ...cont, evald1, ret: evald1.ret };
   }
 }
 
@@ -420,4 +462,3 @@ function run(s) {
 // - tstcon: for IF
 // - procd: for DEFUN
 // - k, abortd: for ABORT
-// LET
