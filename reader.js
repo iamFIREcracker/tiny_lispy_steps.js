@@ -42,14 +42,12 @@ function parseAtom(s) {
     while (!WHITES.includes(s.peekChar()) && !"()".includes(s.peekChar())) {
       atom = `${atom}${s.readChar()}`;
     }
-    if (atom) {
-      if (!isNaN(atom)) {
-        atom = Number(atom);
-      } else if (atom.startsWith('"') && atom.endsWith('"')) {
-        atom = ["STRING", atom.slice(1, -1)];
-      } else {
-        atom = atom.toUpperCase();
-      }
+    if (!isNaN(atom)) {
+      atom = Number(atom);
+    } else if (atom.startsWith('"') && atom.endsWith('"')) {
+      atom = ["STRING", atom.slice(1, -1)];
+    } else {
+      atom = atom.toUpperCase();
     }
     return atom;
   }
@@ -60,7 +58,9 @@ function parseList(s) {
     s.readChar(); // swallow parenthesis
     const ret = [];
     let parsed;
-    while ((parsed = parseExpression(s))) {
+    while (true) {
+      parsed = parseExpression(s);
+      if (parsed == null) break;
       ret.push(parsed);
     }
     assert(s.readChar() === ")", "Expected )");

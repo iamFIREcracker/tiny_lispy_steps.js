@@ -47,6 +47,19 @@ var COMPILED_PROCEDURES = [
       return args[0];
     },
   ],
+  [
+    "JS-GET",
+    (target, key) => {
+      return target[key];
+    },
+  ],
+  [
+    "JS-CALL",
+    (target, method, ...args) => {
+      const methodFn = target[method];
+      return methodFn.apply(target, args);
+    },
+  ],
 ];
 
 function mkGlobalEnv() {
@@ -56,12 +69,66 @@ function mkGlobalEnv() {
     env.define(name, ["COMPILED", fn]);
   }
 
+  env.define("*GLOBAL-THIS*", ["JS-OBJ", globalThis]);
+
   return env;
 }
 
 function taggedList(expr, tag) {
   return Array.isArray(expr) && expr[0] === tag;
 }
+
+function hostToGuest(x) {
+  if (x == null) {
+    return "NIL";
+  } else if (!isNaN(x)) {
+    return x;
+  } else if (typeof x === "string") {
+    return ["STRING", x];
+  } else if (Array.isArray(x)) {
+    return x.map(hostToGuest);
+  } else if (typeof x === "function") {
+    return ["COMPILED", x];
+  } else if (x == null) {
+    return "NIL";
+  } else {
+    assert(typeof x === "object", `Expected Object but got: ${x}`);
+    return ["JS-OBJ", x];
+  }
+}
+
+assertEqual(hostToGuest(null), "NIL");
+assertEqual(hostToGuest(undefined), "NIL");
+assertEqual(hostToGuest(12), 12);
+assertEqual(hostToGuest("foo"), ["STRING", "foo"]);
+assertEqual(hostToGuest([12, "foo"]), [12, ["STRING", "foo"]]);
+assertEqual(hostToGuest(console.log), ["COMPILED", console.log]);
+assertEqual(hostToGuest({ foo: "bar" }), ["JS-OBJ", { foo: "bar" }]);
+
+function guestToHost(x) {
+  if (!isNaN(x)) {
+    return x;
+  } else if (taggedList(x, "STRING")) {
+    return x[1];
+  } else if (taggedList(x, "JS-OBJ")) {
+    return x[1];
+  } else if (taggedList(x, "COMPILED")) {
+    return x[1];
+  } else if (x === "NIL") {
+    return undefined;
+  } else {
+    assert(Array.isArray(x), `Expected Array but got: ${x}`);
+    return x.map(guestToHost);
+  }
+}
+
+assertEqual(guestToHost(hostToGuest(12)), 12);
+assertEqual(guestToHost(hostToGuest("foo")), "foo");
+assertEqual(guestToHost(hostToGuest([12, "foo"])), [12, "foo"]);
+assertEqual(guestToHost(hostToGuest({ foo: "bar" })), { foo: "bar" });
+assertEqual(guestToHost(hostToGuest(console.log)), console.log);
+assertEqual(guestToHost(hostToGuest(null)), undefined);
+assertEqual(guestToHost(hostToGuest(undefined)), undefined);
 
 function evalc(cont) {
   // console.log({ type: "EVALC", cont });
@@ -109,7 +176,10 @@ function applyc(cont) {
 function tryApplyCompiled(cont) {
   const [proc, ...args] = cont.evald.map((p) => p.ret);
   if (taggedList(proc, "COMPILED")) {
-    return { ...cont, ret: proc[1].apply(proc[1], args) };
+    return {
+      ...cont,
+      ret: hostToGuest(proc[1].apply(proc[1], args.map(guestToHost))),
+    };
   }
 }
 

@@ -11,6 +11,8 @@ assertEqual(parseList(new StringStream(`(123 "foo" x)`)), [
   ["STRING", "foo"],
   "X",
 ]);
+assertEqual(parseList(new StringStream(`(0)`)), [0]);
+assertEqual(parseList(new StringStream('("")')), [["STRING", ""]]);
 assertEqual(
   parseList(
     new StringStream(`(defun hello-world ()
@@ -18,6 +20,11 @@ assertEqual(
   ),
   ["DEFUN", "HELLO-WORLD", [], ["FORMAT", "T", ["STRING", "Hello!"]]],
 );
+
+assert(taggedList(run(`*global-this*`), "JS-OBJ"));
+assertEqual(run(`(js-get "Hello" 0)`), ["STRING", "H"]);
+assertEqual(run(`(js-call (js-get *global-this* "Math") "max" 1 12)`), 12);
+assertEqual(run(`(js-call "Hello" "toUpperCase")`), ["STRING", "HELLO"]);
 
 assertEqual(run(`((lambda (x) (+ x 1)) 10)`), 11);
 assertEqual(
