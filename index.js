@@ -19,8 +19,6 @@ Env.prototype.define = function (symbol, value) {
   return value;
 };
 
-var COMPILED = Symbol.for("COMPILED");
-
 var COMPILED_PROCEDURES = [
   ["+", (...args) => args.reduce((a, b) => a + b, 0)],
   [
@@ -55,7 +53,7 @@ function mkGlobalEnv() {
   const env = new Env();
 
   for (const [name, fn] of COMPILED_PROCEDURES) {
-    env.define(name, [COMPILED, fn]);
+    env.define(name, ["COMPILED", fn]);
   }
 
   return env;
@@ -110,7 +108,7 @@ function applyc(cont) {
 
 function tryApplyCompiled(cont) {
   const [proc, ...args] = cont.evald.map((p) => p.ret);
-  if (taggedList(proc, COMPILED)) {
+  if (taggedList(proc, "COMPILED")) {
     return { ...cont, ret: proc[1].apply(proc[1], args) };
   }
 }
