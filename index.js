@@ -33,46 +33,84 @@ Env.prototype.define = function (symbol, value) {
 Env.prototype.fdefine = function (symbol, value) {
   return this.define(`__f_${symbol}`, value);
 };
+Env.prototype.mdefine = function (symbol, value) {
+  return this.define(`__m_${symbol}`, value);
+};
 
 var COMPILED_PROCEDURES = [
-  ["+", (...args) => args.reduce((a, b) => a + b, 0)],
+  [
+    "+",
+    function plus(...args) {
+      return args.reduce((a, b) => a + b, 0);
+    },
+  ],
   [
     "-",
-    (a, ...args) =>
-      args.length ? args.reduce((acc, val) => acc - val, a) : -a,
+    function sub(a, ...args) {
+      return args.length ? args.reduce((acc, val) => acc - val, a) : -a;
+    },
   ],
-  ["*", (...args) => args.reduce((a, b) => a * b, 1)],
-  ["/", (a, b) => a / b],
-
-  // // Comparison operations
-  ["=", (a, b) => a === b],
-  ["<", (a, b) => a < b],
-  // [">", (a, b) => a > b],
-
-  // // List operations
-  // ["LIST", (...args) => args],
-  // ["CONS", (a, b) => [a, ...b]],
-  // ["CAR", (list) => list[0]],
-  // ["CDR", (list) => list.slice(1)],
-
   [
-    "DBG",
-    (...args) => {
-      console.log(...args);
-      return args[0];
+    "*",
+    function mul(...args) {
+      return args.reduce((a, b) => a * b, 1);
+    },
+  ],
+  [
+    "/",
+    function div(a, b) {
+      return a / b;
+    },
+  ],
+  [
+    "=",
+    function eq(a, b) {
+      return a === b;
+    },
+  ],
+  [
+    "<",
+    function lessThan(a, b) {
+      return a < b;
+    },
+  ],
+  [
+    "<=",
+    function lessThanOrEq(a, b) {
+      return a <= b;
+    },
+  ],
+  [
+    ">",
+    function greaterThan(a, b) {
+      return a > b;
+    },
+  ],
+  [
+    ">=",
+    function greaterThanOrEq(a, b) {
+      return a >= b;
     },
   ],
   [
     "JS-GET",
-    (target, key) => {
+    function jsGet(target, key) {
       return target[key];
     },
   ],
   [
     "JS-CALL",
-    (target, method, ...args) => {
+    function jsCall(target, method, ...args) {
       const methodFn = target[method];
       return methodFn.apply(target, args);
+    },
+  ],
+  // XXX Macros
+  [
+    "DBG",
+    (...args) => {
+      console.log('#=>', ...args);
+      return args[0];
     },
   ],
 ];
