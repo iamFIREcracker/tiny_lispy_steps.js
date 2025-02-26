@@ -36,6 +36,11 @@ assertEqual(
   ],
 );
 
+assertEqual(run(`(if t       42 lookup-error)`), 42);
+assertEqual(run(`(if nil     lookup-error 42)`), 42);
+assertEqual(run(`(if 0       42 lookup-error)`), 42);
+assertEqual(run(`(if (> 1 0) 42 lookup-error)`), 42);
+
 assert(taggedList(run(`*global-this*`), "JS-OBJ"));
 assertEqual(run(`(js-get "Hello" 0)`), ["STRING", "H"]);
 assertEqual(run(`(js-call (js-get *global-this* "Math") "max" 1 12)`), 12);

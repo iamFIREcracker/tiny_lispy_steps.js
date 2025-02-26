@@ -122,6 +122,9 @@ function mkGlobalEnv() {
     env.fdefine(name, ["COMPILED", fn]);
   }
 
+  env.define("T", "T");
+  env.define("NIL", "NIL");
+
   env.define("*GLOBAL-THIS*", ["JS-OBJ", globalThis]);
 
   return env;
@@ -134,6 +137,10 @@ function taggedList(expr, tag) {
 function hostToGuest(x) {
   if (x == null) {
     return "NIL";
+  } else if (x === true) {
+    return 'T';
+  } else if (x === false) {
+    return 'NIL';
   } else if (!isNaN(x)) {
     return x;
   } else if (typeof x === "string") {
@@ -153,6 +160,8 @@ function hostToGuest(x) {
 assertEqual(hostToGuest(null), "NIL");
 assertEqual(hostToGuest(undefined), "NIL");
 assertEqual(hostToGuest(12), 12);
+assertEqual(hostToGuest(true), "T");
+assertEqual(hostToGuest(false), "NIL");
 assertEqual(hostToGuest("foo"), ["STRING", "foo"]);
 assertEqual(hostToGuest([12, "foo"]), [12, ["STRING", "foo"]]);
 assertEqual(hostToGuest(console.log), ["COMPILED", console.log]);
@@ -373,7 +382,7 @@ function tryEvalIf(cont) {
       assert(cont.resumedFrom.hasOwnProperty("ret"));
       tstcon = cont.resumedFrom;
     }
-    if (tstcon.ret) {
+    if (tstcon.ret !== 'NIL') {
       return { ...cont, tstcon, expr: then };
     }
     return { ...cont, tstcon, expr: else_ };
