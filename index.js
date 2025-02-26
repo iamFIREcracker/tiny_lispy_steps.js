@@ -37,88 +37,53 @@ Env.prototype.mdefine = function (symbol, value) {
   return this.define(`__m_${symbol}`, value);
 };
 
-var COMPILED_PROCEDURES = [
-  [
-    "+",
-    function plus(...args) {
-      return args.reduce((a, b) => a + b, 0);
-    },
-  ],
-  [
-    "-",
-    function sub(a, ...args) {
-      return args.length ? args.reduce((acc, val) => acc - val, a) : -a;
-    },
-  ],
-  [
-    "*",
-    function mul(...args) {
-      return args.reduce((a, b) => a * b, 1);
-    },
-  ],
-  [
-    "/",
-    function div(a, b) {
-      return a / b;
-    },
-  ],
-  [
-    "=",
-    function eq(a, b) {
-      return a === b;
-    },
-  ],
-  [
-    "<",
-    function lessThan(a, b) {
-      return a < b;
-    },
-  ],
-  [
-    "<=",
-    function lessThanOrEq(a, b) {
-      return a <= b;
-    },
-  ],
-  [
-    ">",
-    function greaterThan(a, b) {
-      return a > b;
-    },
-  ],
-  [
-    ">=",
-    function greaterThanOrEq(a, b) {
-      return a >= b;
-    },
-  ],
-  [
-    "JS-GET",
-    function jsGet(target, key) {
-      return target[key];
-    },
-  ],
-  [
-    "JS-CALL",
-    function jsCall(target, method, ...args) {
-      const methodFn = target[method];
-      return methodFn.apply(target, args);
-    },
-  ],
+var COMPILED_PROCEDURES = {
+  "+": function plus(...args) {
+    return args.reduce((a, b) => a + b, 0);
+  },
+  "-": function sub(a, ...args) {
+    return args.length ? args.reduce((acc, val) => acc - val, a) : -a;
+  },
+  "*": function mul(...args) {
+    return args.reduce((a, b) => a * b, 1);
+  },
+  "/": function div(a, b) {
+    return a / b;
+  },
+  "=": function eq(a, b) {
+    return a === b;
+  },
+  "<": function lessThan(a, b) {
+    return a < b;
+  },
+  "<=": function lessThanOrEq(a, b) {
+    // Vim matchit seems to trip over <=...  So we reverse it!
+    return !(a > b);
+  },
+  ">": function greaterThan(a, b) {
+    return a > b;
+  },
+  ">=": function greaterThanOrEq(a, b) {
+    return a >= b;
+  },
+  "JS-GET": function jsGet(target, key) {
+    return target[key];
+  },
+  "JS-CALL": function jsCall(target, method, ...args) {
+    const methodFn = target[method];
+    return methodFn.apply(target, args);
+  },
   // XXX Macros
-  [
-    "DBG",
-    (...args) => {
-      console.log("#=>", ...args);
-      return args[0];
-    },
-  ],
-];
+  DBG: function dbg(...args) {
+    console.log("#=>", ...args);
+    return args[0];
+  },
+};
 
 function mkGlobalEnv() {
   const env = new Env();
 
-  for (const [name, fn] of COMPILED_PROCEDURES) {
+  for (const [name, fn] of Object.entries(COMPILED_PROCEDURES)) {
     env.fdefine(name, ["COMPILED", fn]);
   }
 
