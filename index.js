@@ -5,18 +5,33 @@ var Env = function (parent = null, ...bindings) {
     this.bindings.set(bindings[i], bindings[i + 1]);
   }
 };
-Env.prototype.lookup = function (symbol) {
+Env.prototype.has = function (symbol) {
   if (this.bindings.has(symbol)) {
     return this.bindings.get(symbol);
   }
   if (this.parent) {
-    return this.parent.lookup(symbol);
+    return this.parent.has(symbol);
+  }
+};
+Env.prototype.hasf = function (symbol) {
+  return this.has(`__f_${symbol}`);
+};
+Env.prototype.lookup = function (symbol) {
+  const value = this.has(symbol);
+  if (value != null) {
+    return value;
   }
   throw new Error(`Undefined symbol: ${symbol}`);
+};
+Env.prototype.flookup = function (symbol) {
+  return this.lookup(`__f_${symbol}`);
 };
 Env.prototype.define = function (symbol, value) {
   this.bindings.set(symbol, value);
   return value;
+};
+Env.prototype.fdefine = function (symbol, value) {
+  return this.define(`__f_${symbol}`, value);
 };
 
 var COMPILED_PROCEDURES = [
@@ -66,7 +81,7 @@ function mkGlobalEnv() {
   const env = new Env();
 
   for (const [name, fn] of COMPILED_PROCEDURES) {
-    env.define(name, ["COMPILED", fn]);
+    env.fdefine(name, ["COMPILED", fn]);
   }
 
   env.define("*GLOBAL-THIS*", ["JS-OBJ", globalThis]);
@@ -331,7 +346,7 @@ function tryEvalDefun(cont) {
       procd = cont.resumedFrom;
     }
     const env = new Env(cont.env);
-    env.define(name, procd.ret);
+    env.fdefine(name, procd.ret);
     return { ...cont, procd, env, ret: procd.ret };
   }
 }
@@ -485,8 +500,9 @@ function printK(cont) {
 }
 
 function tryEvalApplication(cont) {
-  if (Array.isArray(cont.expr)) {
-    let evald = cont.evald ?? [];
+  if (Array.isArray(cont.expr) && cont.env.hasf(cont.expr[0])) {
+    const fn = cont.expr[0];
+    let evald = cont.evald ?? [{ expr: fn, ret: cont.env.flookup(fn)}];
 
     for (let i = 0; i < evald.length; i++) {
       const arcont = evald[i];
