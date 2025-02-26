@@ -296,6 +296,7 @@ function tryEvalSelfEvaluating(cont) {
     typeof cont.expr === "number" ||
     typeof cont.expr === "boolean" ||
     taggedList(cont.expr, "STRING") ||
+    taggedList(cont.expr, "JS-OBJ") ||
     taggedList(cont.expr, "PROCEDURE") ||
     taggedList(cont.expr, "CONTINUATION")
   ) {
@@ -319,6 +320,7 @@ var SPECIAL_OPERATORS = {
   PROMPT: (s) => tryEvalPrompt(s),
   ABORT: (s) => tryEvalAbort(s),
   CALL: (s) => tryEvalCall(s),
+  "JS-THEN": (s) => tryEvalJsThen(s),
 };
 
 function tryEvalSpecialOperator(cont) {
@@ -568,6 +570,45 @@ function tryEvalCall(cont) {
   }
 }
 
+function tryEvalJsThen(cont) {
+  if (taggedList(cont.expr, "JS-THEN")) {
+    let evald = cont.evald ?? [];
+
+    for (let i = 0; i < evald.length; i++) {
+      const arcont = evald[i];
+      if (!arcont.hasOwnProperty("ret")) {
+        assert(cont.resumedFrom.hasOwnProperty("ret"));
+        evald = [...evald.slice(0, i), cont.resumedFrom];
+        break;
+      }
+    }
+    const args = cont.expr.slice(1);
+    if (evald.length < args.length) {
+      const arcont = { expr: args[evald.length], env: cont.env };
+      evald = [...evald, arcont];
+      return { ...arcont, cont: { ...cont, evald } };
+    }
+
+    const [{ ret: promise }, { ret: callback }] = evald;
+    assert(
+      taggedList(promise, "JS-OBJ"),
+      `Expected Promise/JS-OBJ but got: ${promise}`,
+    );
+    assert(
+      taggedList(callback, "PROCEDURE") || taggedList(callback, "CONTINUATION"),
+      `Expected Procedure/Continuation but got: ${callback}`,
+    );
+    const ret = promise[1].then((v) =>
+      evalca({
+        env: cont.env,
+        expr: [callback, hostToGuest(v)],
+        evald: [evald[1], evalc({ expr: hostToGuest(v) })],
+      }),
+    );
+    return { ...cont, evald, ret: hostToGuest(ret) };
+  }
+}
+
 function tryEvalApplication(cont) {
   if (Array.isArray(cont.expr)) {
     let evald = cont.evald ?? [];
@@ -595,6 +636,13 @@ function tryEvalApplication(cont) {
     }
     return applyc({ ...cont, evald });
   }
+}
+
+function evalca(cont) {
+  do {
+    cont = evalc(cont);
+  } while (!cont.hasOwnProperty("ret") || cont.cont);
+  return cont.ret;
 }
 
 function* evale(expr, env) {

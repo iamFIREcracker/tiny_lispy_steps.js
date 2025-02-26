@@ -48,3 +48,27 @@ evalc(_);
 evalc({ expr: [["LAMBDA", ["X"], ["+", "X", 1]], 10], env: mkGlobalEnv() });
 evalc(_);
 
+run(`*global-this*`);
+run(`(js-get *global-this* "console")`);
+run(`(js-call (js-get *global-this* "console") "log" "YAYAYAYAYA!")`);
+run(`
+       (defun fetch (url)
+         (js-call *global-this* "fetch" url))
+
+       (js-then (fetch "https://matteolandi.net")
+         (lambda (res) (dbg (js-get res "status"))))
+
+        `);
+run(`
+       (defun fetch (url)
+         (js-call *global-this* "fetch" url))
+
+       (defun await (p)
+         (abort :async p))
+
+       (prompt :async (lambda ()
+                        (let ((res (await (fetch "https://matteolandi.net"))))
+                          (dbg (js-get res "status"))))
+          (lambda (k p) (js-then p (lambda (v) (call k v)))))
+
+       `);
