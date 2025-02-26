@@ -318,6 +318,7 @@ var SPECIAL_OPERATORS = {
   LET: (s) => tryEvalLet(s),
   PROMPT: (s) => tryEvalPrompt(s),
   ABORT: (s) => tryEvalAbort(s),
+  CALL: (s) => tryEvalCall(s),
 };
 
 function tryEvalSpecialOperator(cont) {
@@ -541,6 +542,30 @@ function printK(cont) {
   if (!cont) return;
   console.log(cont.expr);
   printK(cont.cont);
+}
+
+function tryEvalCall(cont) {
+  if (taggedList(cont.expr, "CALL")) {
+    let evald = cont.evald ?? [];
+
+    for (let i = 0; i < evald.length; i++) {
+      const arcont = evald[i];
+      if (!arcont.hasOwnProperty("ret")) {
+        assert(cont.resumedFrom.hasOwnProperty("ret"));
+        evald = [...evald.slice(0, i), cont.resumedFrom];
+        break;
+      }
+    }
+
+    const args = cont.expr.slice(1);
+    if (evald.length < args.length) {
+      const expr = args[evald.length];
+      const arcont = { expr, env: cont.env };
+      evald = [...evald, arcont];
+      return { ...arcont, cont: { ...cont, evald } };
+    }
+    return applyc({ ...cont, evald });
+  }
 }
 
 function tryEvalApplication(cont) {
