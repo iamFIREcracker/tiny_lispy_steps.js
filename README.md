@@ -18,6 +18,8 @@ $ node-rlwrap
 - `LET`
 - `PROMPT` / `ABORT`
 - `CALL`
+- `PAUSE` to pause the execution and allow you to inspect the current
+  continuation.  To resume, simply call `evalc` or `evalca` that continuation.
 
 ### JavaScript interoperability
 
@@ -33,8 +35,9 @@ $ node-rlwrap
 - JS-CATCH
 - Error handling
 - Async single-step evaluation -- or how to get rid of that `evalca` inside
-  JS-THEN
-
+  JS-THEN.  Maybe we store all the async tasks somewhere, so that `run` can
+  switch to a different async stream when the current one is done; similarly
+  for manually stepping through the execution via `evalc`.
 
 ## Links:
 

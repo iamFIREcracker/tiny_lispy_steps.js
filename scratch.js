@@ -1,6 +1,5 @@
 mkGlobalEnv();
 
-
 run1(`((lambda (x) (+ x 1)) 10)`);
 evalc(_);
 
@@ -63,3 +62,24 @@ run(`
           (lambda (k p) (js-then p (lambda (v) (call k v)))))
 
        `);
+// With PAUSE
+run(`
+       (defun fetch (url)
+         (js-call *global-this* "fetch" url))
+
+       (defun await (p)
+         (abort :async p))
+
+       (prompt :async (lambda ()
+                        (let ((res (await (fetch "https://matteolandi.net"))))
+                          (pause)
+                          (dbg (js-get res "status"))))
+          (lambda (k p) (js-then p (lambda (v) (call k v)))))
+
+       `);
+// Unwrap promise for async task
+guestToHost(_)
+// Await it
+await _
+// Continue evaluation
+evalca(_)

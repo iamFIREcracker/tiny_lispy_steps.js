@@ -103,9 +103,9 @@ function hostToGuest(x) {
   if (x == null) {
     return "NIL";
   } else if (x === true) {
-    return 'T';
+    return "T";
   } else if (x === false) {
-    return 'NIL';
+    return "NIL";
   } else if (!isNaN(x)) {
     return x;
   } else if (typeof x === "string") {
@@ -294,6 +294,7 @@ var SPECIAL_OPERATORS = {
   PROMPT: (s) => tryEvalPrompt(s),
   ABORT: (s) => tryEvalAbort(s),
   CALL: (s) => tryEvalCall(s),
+  PAUSE: (s) => tryEvalPause(s),
   "JS-THEN": (s) => tryEvalJsThen(s),
 };
 
@@ -347,7 +348,7 @@ function tryEvalIf(cont) {
       assert(cont.resumedFrom.hasOwnProperty("ret"));
       tstcon = cont.resumedFrom;
     }
-    if (tstcon.ret !== 'NIL') {
+    if (tstcon.ret !== "NIL") {
       return { ...cont, tstcon, expr: then };
     }
     return { ...cont, tstcon, expr: else_ };
@@ -544,6 +545,12 @@ function tryEvalCall(cont) {
   }
 }
 
+function tryEvalPause(cont) {
+  if (taggedList(cont.expr, "PAUSE")) {
+    return { ...cont, ret: { ...cont, ret: 'T' }};
+  }
+}
+
 function tryEvalJsThen(cont) {
   if (taggedList(cont.expr, "JS-THEN")) {
     let evald = cont.evald ?? [];
@@ -615,6 +622,8 @@ function tryEvalApplication(cont) {
 function evalca(cont) {
   do {
     cont = evalc(cont);
+    if (cont.expr?.[0] === "PAUSE" && cont.hasOwnProperty("ret"))
+      return cont.ret;
   } while (!cont.hasOwnProperty("ret") || cont.cont);
   return cont.ret;
 }
@@ -624,6 +633,7 @@ function* evale(expr, env) {
   do {
     cont = evalc(cont);
     yield cont;
+    if (cont.expr?.[0] === "PAUSE" && cont.hasOwnProperty("ret")) return;
   } while (!cont.hasOwnProperty("ret") || cont.cont);
   return cont.ret;
 }
