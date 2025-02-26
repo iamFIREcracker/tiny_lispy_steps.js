@@ -41,6 +41,8 @@ evalc(_);
 run(`*global-this*`);
 run(`(js-get *global-this* "console")`);
 run(`(js-call (js-get *global-this* "console") "log" "YAYAYAYAYA!")`);
+
+// Promise chaining via JS-THEN
 run(`
        (defun fetch (url)
          (js-call *global-this* "fetch" url))
@@ -49,6 +51,9 @@ run(`
          (lambda (res) (dbg (js-get res "status"))))
 
         `);
+// poor man's async / await in userland
+// Note: only one AWAIT call per :ASYNC prompt.  For a more generic solution
+// see the next example, where we use macros to allow nesting of AWAIT calls.
 run(`
        (defun fetch (url)
          (js-call *global-this* "fetch" url))
@@ -78,8 +83,57 @@ run(`
 
        `);
 // Unwrap promise for async task
-guestToHost(_)
+guestToHost(_);
 // Await it
-await _
+await _;
 // Continue evaluation
-evalca(_)
+evalca(_);
+
+// async / await in userland!
+// Note: since we are using delimited continuations
+// every function can call AWAIT so long as there is an
+// :ASYNC tag in the call stack; no need to mark async
+// functions differently from standard functions!
+run(`
+       (defun fetch (url)
+         (js-call *global-this* "fetch" url))
+
+       (defmacro async (fn)
+         (quasiquote (prompt :async (unquote fn)
+                       (lambda (k p) (js-then p (lambda (v) (async (lambda () (call k v)))))))))
+
+       (defun await (p)
+         (abort :async p))
+
+       (defun main()
+         (let ((res (await (fetch "https://matteolandi.net"))))
+           (dbg (js-get res "status"))))
+
+       (async
+         (lambda ()
+           (main)))
+
+       `);
+// Multiple AWAIT calls
+run(`
+       (defun fetch (url)
+         (js-call *global-this* "fetch" url))
+
+       (defmacro async (fn)
+         (quasiquote (prompt :async (unquote fn)
+                       (lambda (k p) (js-then p (lambda (v) (async (lambda () (call k v)))))))))
+
+       (defun await (p)
+         (abort :async p))
+
+       (defun main()
+         (let ((res1 (await (fetch "https://matteolandi.net")))
+               (res2 (await (fetch "https://matteolandi.net/cg.html"))))
+           (dbg (js-get res1 "url") (js-get res1 "status")
+                (js-get res2 "url") (js-get res2 "status"))))
+
+       (async
+         (lambda ()
+           (main)))
+
+       `);

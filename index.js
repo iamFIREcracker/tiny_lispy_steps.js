@@ -16,6 +16,9 @@ Env.prototype.has = function (symbol) {
 Env.prototype.hasf = function (symbol) {
   return this.has(`__f_${symbol}`);
 };
+Env.prototype.hasm = function (symbol) {
+  return this.has(`__m_${symbol}`);
+};
 Env.prototype.lookup = function (symbol) {
   const value = this.has(symbol);
   if (value != null) {
@@ -25,6 +28,9 @@ Env.prototype.lookup = function (symbol) {
 };
 Env.prototype.flookup = function (symbol) {
   return this.lookup(`__f_${symbol}`);
+};
+Env.prototype.mlookup = function (symbol) {
+  return this.lookup(`__m_${symbol}`);
 };
 Env.prototype.define = function (symbol, value) {
   this.bindings.set(symbol, value);
@@ -111,7 +117,7 @@ function hostToGuest(x) {
   } else if (typeof x === "string") {
     return ["STRING", x];
   } else if (Array.isArray(x)) {
-    return x.map(hostToGuest);
+    return x;
   } else if (typeof x === "function") {
     return ["COMPILED", x];
   } else if (x == null) {
@@ -128,7 +134,7 @@ assertEqual(hostToGuest(12), 12);
 assertEqual(hostToGuest(true), "T");
 assertEqual(hostToGuest(false), "NIL");
 assertEqual(hostToGuest("foo"), ["STRING", "foo"]);
-assertEqual(hostToGuest([12, "foo"]), [12, ["STRING", "foo"]]);
+assertEqual(hostToGuest([12, "foo"]), [12, "foo"]);
 assertEqual(hostToGuest(console.log), ["COMPILED", console.log]);
 assertEqual(hostToGuest({ foo: "bar" }), ["JS-OBJ", { foo: "bar" }]);
 
@@ -145,7 +151,7 @@ function guestToHost(x) {
     return undefined;
   } else {
     assert(Array.isArray(x), `Expected Array but got: ${x}`);
-    return x.map(guestToHost);
+    return x;
   }
 }
 
@@ -165,6 +171,7 @@ function evalc(cont) {
     tryEvalSelfEvaluating(cont) ??
     tryEvalVariable(cont) ??
     tryEvalSpecialOperator(cont) ??
+    tryEvalMacroExpansion(cont) ??
     tryEvalApplication(cont) ??
     notSupportedError()
   );
@@ -295,6 +302,9 @@ var SPECIAL_OPERATORS = {
   ABORT: (s) => tryEvalAbort(s),
   CALL: (s) => tryEvalCall(s),
   PAUSE: (s) => tryEvalPause(s),
+  QUOTE: (s) => tryEvalQuote(s),
+  QUASIQUOTE: (s) => tryEvalQuasiquote(s),
+  DEFMACRO: (s) => tryEvalDefmacro(s),
   "JS-THEN": (s) => tryEvalJsThen(s),
 };
 
@@ -551,6 +561,83 @@ function tryEvalPause(cont) {
   }
 }
 
+function tryEvalQuote(cont) {
+  if (taggedList(cont.expr, "QUOTE")) {
+    return { ...cont, ret: cont.expr[1] };
+  }
+}
+
+// XXX this is a very naive implementation which
+// will fail, spectacularly, in pretty much all
+// the non-trivial usages
+function tryEvalQuasiquote(cont) {
+  if (taggedList(cont.expr, "QUASIQUOTE")) {
+    const expr = tryUnquote(cont.expr[1]);
+    return { ...cont, ret: expr };
+
+    function tryUnquote(expr) {
+      if (taggedList(expr, "UNQUOTE")) {
+        return cont.env.lookup(expr[1]);
+      } else if (Array.isArray(expr)) {
+        return expr.map(tryUnquote);
+      } else {
+        return expr;
+      }
+    }
+  }
+}
+
+function tryEvalDefmacro(cont) {
+  if (taggedList(cont.expr, "DEFMACRO")) {
+    let [_, name, params, ...body] = cont.expr;
+    let macrod;
+    if (!cont.macrod) {
+      macrod = { expr: ["LAMBDA", params, prognify(body)], env: cont.env };
+      return { ...macrod, cont: { ...cont, macrod } };
+    }
+    if (!cont.macrod.hasOwnProperty("ret")) {
+      assert(cont.resumedFrom.hasOwnProperty("ret"));
+      macrod = cont.resumedFrom;
+    }
+    const env = new Env(cont.env);
+    env.mdefine(name, macrod.ret);
+    return { ...cont, macrod, env, ret: macrod.ret };
+  }
+}
+
+function tryEvalMacroExpansion(cont) {
+  if (Array.isArray(cont.expr) && cont.env.hasm(cont.expr[0])) {
+    let expnd = cont.expnd ?? false;
+    if (!expnd) {
+      expnd = true;
+      const [macro, ...args] = cont.expr;
+      const evald = [
+        { expr: macro, ret: cont.env.mlookup(macro) },
+        ...args.map((v) => ({
+          expr: ["QUOTE", v],
+          ret: v,
+        })),
+      ];
+      return applyc({ ...cont, evald, expnd, cont: { ...cont, expnd } });
+    }
+
+    let expnd1 = cont.expnd1 ?? false;
+    if (!expnd1) {
+      expnd1 = true;
+      assert(cont.resumedFrom.hasOwnProperty("ret"));
+      const expr = cont.resumedFrom.ret;
+      return { expr, env: cont.env, expnd, cont: { ...cont, expnd1 } };
+    }
+
+    assert(cont.resumedFrom.hasOwnProperty("ret"));
+    // XXX this is ridicolous -- too many k chaining...
+    // still, it works, so whatever
+    const ccont = cont.cont.cont;
+
+    return { ...cont, cont: ccont, ret: cont.resumedFrom.ret };
+  }
+}
+
 function tryEvalJsThen(cont) {
   if (taggedList(cont.expr, "JS-THEN")) {
     let evald = cont.evald ?? [];
@@ -659,3 +746,4 @@ function run1(s) {
 // - tstcon: for IF
 // - procd: for DEFUN
 // - k, abortd: for ABORT
+// - macrod, expnd, expnd1: for DEFMACRO

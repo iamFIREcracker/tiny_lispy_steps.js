@@ -91,3 +91,29 @@ assertEqual(
          (+ x y))`),
   42,
 );
+
+assertEqual(run(`(quote 123)`), 123);
+assertEqual(run(`(quote (foo "bar"))`), ["FOO", ["STRING", "bar"]]);
+assertEqual(run(`(dbg (quote (+ 1 2)) (+ 1 2))`), ["+", 1, 2]);
+
+assertEqual(evalca({ expr: ["QUASIQUOTE", ["X"]] }), ["X"]);
+assertEqual(
+  evalca({
+    expr: ["QUASIQUOTE", [["UNQUOTE", "X"]]],
+    env: new Env(null, "X", ["LAMBDA", [], "BAR"]),
+  }),
+  [["LAMBDA", [], "BAR"]],
+);
+
+assertEqual(
+  run(`
+
+         (defmacro dbgl (x)
+           (quasiquote
+             (dbg (quote (unquote x)) (unquote x))))
+
+         (dbgl (+ 1 2))
+
+      `),
+  ["+", 1, 2],
+);
