@@ -21,6 +21,8 @@ $ node-rlwrap
 
 - `QUOTE`, `QUASIQUOTE`, `UNQUOTE`, `DEFMACRO`
 - Js/Promise support via `PROMPT` / `ABORT`
+- BREAKPOINT to pause the evaluation: could wrap the whole execution around
+  a `(PROMPT :DEBUG ... (lambda (k) k))`
 
 ## Links:
 

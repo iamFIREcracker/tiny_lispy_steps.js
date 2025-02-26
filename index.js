@@ -198,17 +198,15 @@ function tryApplyCompiled(cont) {
   }
 }
 
-var PROCEDURE = Symbol.for("PROCEDURE");
-
 function tryApplyProcedure(cont) {
   const [proc, ...args] = cont.evald.map((p) => p.ret);
-  if (taggedList(proc, PROCEDURE)) {
+  if (taggedList(proc, "PROCEDURE")) {
     let evald1 = cont.evald1;
     if (!evald1) {
       const env = new Env(cont.env);
       let [_, params, body] = proc;
       for (let i = 0; i < params.length; i++) {
-        env.define(params[i], args[i] ?? null);
+        env.define(params[i], args[i] ?? "NIL");
       }
 
       const bdcont = {
@@ -224,11 +222,9 @@ function tryApplyProcedure(cont) {
   }
 }
 
-var CONTINUATION = Symbol.for("CONTINUATION");
-
 function tryApplyContinuation(cont) {
   const [proc, ..._] = cont.evald.map((p) => p.ret);
-  if (taggedList(proc, CONTINUATION)) {
+  if (taggedList(proc, "CONTINUATION")) {
     let evald1 = cont.evald1;
     if (!evald1) {
       const [_, kcont] = proc;
@@ -237,6 +233,8 @@ function tryApplyContinuation(cont) {
       const cont1 = { ...cont, evald1 };
       const kcont1 = reify(kcont, cont1);
       Object.assign(evald1, kcont1); // XXX cyclic dependency here...
+      // dbg(cont.evald[1].ret);
+      // printK(kcont1);
       return {
         ...kcont1,
         // XXX multipleargs
@@ -260,7 +258,7 @@ function tryEvalSelfEvaluating(cont) {
     typeof cont.expr === "number" ||
     typeof cont.expr === "boolean" ||
     taggedList(cont.expr, "STRING") ||
-    taggedList(cont.expr, CONTINUATION)
+    taggedList(cont.expr, "CONTINUATION")
   ) {
     return { ...cont, ret: cont.expr };
   }
@@ -302,7 +300,7 @@ function tryEvalLambda(cont) {
 }
 
 function mkProcedure(params, ...body) {
-  return [PROCEDURE, params, prognify(body)];
+  return ["PROCEDURE", params, prognify(body)];
 }
 
 function prognify(body) {
@@ -475,7 +473,7 @@ function tryEvalAbort(cont) {
         tcont = tcont.cont;
       }
       assert(tcont, `Could not find PROMPT with tag: ${tag}`);
-      const k = [CONTINUATION, limited({ ...cont, evald, abortd })];
+      const k = ["CONTINUATION", limited({ ...cont, evald, abortd })];
       return {
         ...tcont,
         abortd: true,
