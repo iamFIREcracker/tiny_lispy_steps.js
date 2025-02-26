@@ -1,4 +1,6 @@
 assertEqual(skipWhitespace(new StringStream("      foo")), 6);
+
+assertEqual(parseAtom(new StringStream("")), undefined);
 assertEqual(parseAtom(new StringStream("foo")), "FOO");
 assertEqual(parseAtom(new StringStream("1.2")), 1.2);
 assertEqual(parseAtom(new StringStream("t")), "T");
@@ -13,12 +15,25 @@ assertEqual(parseList(new StringStream(`(123 "foo" x)`)), [
 ]);
 assertEqual(parseList(new StringStream(`(0)`)), [0]);
 assertEqual(parseList(new StringStream('("")')), [["STRING", ""]]);
+
 assertEqual(
-  parseList(
-    new StringStream(`(defun hello-world ()
-                        (format t "Hello!"))`),
+  readFromString(
+    `(defun hello-world ()
+       (format t "Hello!"))`,
   ),
   ["DEFUN", "HELLO-WORLD", [], ["FORMAT", "T", ["STRING", "Hello!"]]],
+);
+assertEqual(
+  readAllFromString(
+    `(defun hello-world ()
+       (format t "Hello!"))
+
+     (hello)`,
+  ),
+  [
+    ["DEFUN", "HELLO-WORLD", [], ["FORMAT", "T", ["STRING", "Hello!"]]],
+    ["HELLO"],
+  ],
 );
 
 assert(taggedList(run(`*global-this*`), "JS-OBJ"));
@@ -28,23 +43,27 @@ assertEqual(run(`(js-call "Hello" "toUpperCase")`), ["STRING", "HELLO"]);
 
 assertEqual(run(`((lambda (x) (+ x 1)) 10)`), 11);
 assertEqual(
-  run(`(progn
+  run(`
          (defun factorial (n)
            (if (= n 1)
              1
              (* (factorial (- n 1)) n)))
 
-        (factorial 100))`),
+         (factorial 100)
+
+      `),
   9.33262154439441e157,
 );
 assertEqual(
-  run(`(progn
+  run(`
          (defun fib (n)
            (if (< n 2)
              n
              (+ (fib (- n 1)) (fib (- n 2)))))
 
-        (fib 10))`),
+         (fib 10)
+
+      `),
   55,
 );
 

@@ -567,13 +567,18 @@ function* evale(expr, env) {
 }
 
 function run(s) {
-  const expr = readFromString(s);
+  const expr = prognify(readAllFromString(s));
   let ret = null;
   for (const cont of evale(expr, mkGlobalEnv())) {
     ret = cont.ret;
     // console.log(cont);
   }
   return ret;
+}
+
+function run1(s) {
+  const expr = prognify(readAllFromString(s));
+  return evalc({ expr, env: mkGlobalEnv() });
 }
 
 // Datamodeling:

@@ -20,6 +20,17 @@ function readFromString(string, start = 0) {
   return parseExpression(s);
 }
 
+function readAllFromString(string, start = 0) {
+  const s = new StringStream(string, start);
+  const ret = [];
+  while (true) {
+    parsed = parseExpression(s);
+    if (parsed == null) break;
+    ret.push(parsed);
+  }
+  return ret;
+}
+
 function parseExpression(s) {
   skipWhitespace(s);
   return parseAtom(s) ?? parseList(s);
