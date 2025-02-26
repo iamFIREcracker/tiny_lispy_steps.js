@@ -109,7 +109,7 @@ var COMPILED_PROCEDURES = [
   [
     "DBG",
     (...args) => {
-      console.log('#=>', ...args);
+      console.log("#=>", ...args);
       return args[0];
     },
   ],
@@ -296,6 +296,7 @@ function tryEvalSelfEvaluating(cont) {
     typeof cont.expr === "number" ||
     typeof cont.expr === "boolean" ||
     taggedList(cont.expr, "STRING") ||
+    taggedList(cont.expr, "PROCEDURE") ||
     taggedList(cont.expr, "CONTINUATION")
   ) {
     return { ...cont, ret: cont.expr };
@@ -309,6 +310,7 @@ function tryEvalVariable(cont) {
 }
 
 var SPECIAL_OPERATORS = {
+  "SYMBOL-FUNCTION": (s) => tryEvalSymbolFunction(s),
   LAMBDA: (s) => tryEvalLambda(s),
   IF: (s) => tryEvalIf(s),
   DEFUN: (s) => tryEvalDefun(s),
@@ -324,6 +326,12 @@ function tryEvalSpecialOperator(cont) {
     if (cont1) {
       return cont1;
     }
+  }
+}
+
+function tryEvalSymbolFunction(cont) {
+  if (taggedList(cont.expr, "SYMBOL-FUNCTION")) {
+    return { ...cont, ret: cont.env.flookup(cont.expr[1]) };
   }
 }
 
@@ -536,9 +544,8 @@ function printK(cont) {
 }
 
 function tryEvalApplication(cont) {
-  if (Array.isArray(cont.expr) && cont.env.hasf(cont.expr[0])) {
-    const fn = cont.expr[0];
-    let evald = cont.evald ?? [{ expr: fn, ret: cont.env.flookup(fn)}];
+  if (Array.isArray(cont.expr)) {
+    let evald = cont.evald ?? [];
 
     for (let i = 0; i < evald.length; i++) {
       const arcont = evald[i];
@@ -549,7 +556,15 @@ function tryEvalApplication(cont) {
       }
     }
     if (evald.length < cont.expr.length) {
-      const arcont = { expr: cont.expr[evald.length], env: cont.env };
+      const expr = cont.expr[evald.length];
+      let arcont;
+
+      if (evald.length === 0 && typeof expr === "string") {
+        arcont = { expr: ["SYMBOL-FUNCTION", expr], env: cont.env };
+      } else {
+        arcont = { expr, env: cont.env };
+      }
+
       evald = [...evald, arcont];
       return { ...arcont, cont: { ...cont, evald } };
     }
