@@ -20,6 +20,7 @@ $ node-rlwrap
 - `CALL`
 - `PAUSE` to pause the execution and allow you to inspect the current
   continuation.  To resume, simply call `evalc` or `evalca` that continuation.
+- `LOAD` to load forms from a file
 
 ### JavaScript interoperability
 
@@ -29,7 +30,8 @@ $ node-rlwrap
 
 ## TODO:
 
-- `QUOTE`, `QUASIQUOTE`, `UNQUOTE`, `DEFMACRO`
+- Environment is kind of fucked up at the moment... all the variables are
+  _dynamic_ -- no concept of lexical scope
 - BREAKPOINT to pause the evaluation: could wrap the whole execution around
   a `(PROMPT :DEBUG ... (lambda (k) k))`
 - JS-CATCH

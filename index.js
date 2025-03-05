@@ -302,6 +302,7 @@ var SPECIAL_OPERATORS = {
   ABORT: (s) => tryEvalAbort(s),
   CALL: (s) => tryEvalCall(s),
   PAUSE: (s) => tryEvalPause(s),
+  LOAD: (s) => tryEvalLoad(s),
   QUOTE: (s) => tryEvalQuote(s),
   QUASIQUOTE: (s) => tryEvalQuasiquote(s),
   DEFMACRO: (s) => tryEvalDefmacro(s),
@@ -557,7 +558,31 @@ function tryEvalCall(cont) {
 
 function tryEvalPause(cont) {
   if (taggedList(cont.expr, "PAUSE")) {
-    return { ...cont, ret: { ...cont, ret: 'T' }};
+    return { ...cont, ret: { ...cont, ret: "T" } };
+  }
+}
+
+function tryEvalLoad(cont) {
+  if (taggedList(cont.expr, "LOAD")) {
+    let evald1 = cont.evald1 ?? false;
+    if (!evald1) {
+      evald1 = true;
+      const arg = cont.expr[1];
+      assert(
+        taggedList(arg, "STRING"),
+        `LOAD expects a STRING literal argument`,
+      );
+      const s = fs.readFileSync(guestToHost(arg), "utf-8");
+      const expr = prognify(readAllFromString(s));
+      return { expr, env: cont.env, cont: { ...cont, evald1 } };
+    }
+    assert(cont.resumedFrom.hasOwnProperty("ret"));
+    return {
+      ...cont,
+      env: cont.resumedFrom.env,
+      ret: cont.resumedFrom.ret,
+      cont: { ...cont.cont, env: cont.resumedFrom.env },
+    };
   }
 }
 
@@ -726,17 +751,24 @@ function* evale(expr, env) {
 }
 
 function run(s) {
-  const expr = prognify(readAllFromString(s));
+  const expr = [
+    "PROGN",
+    ["LOAD", ["STRING", "./system.lisp"]],
+    ...readAllFromString(s),
+  ];
   let ret = null;
   for (const cont of evale(expr, mkGlobalEnv())) {
     ret = cont.ret;
-    // console.log(cont);
   }
   return ret;
 }
 
 function run1(s) {
-  const expr = prognify(readAllFromString(s));
+  const expr = [
+    "PROGN",
+    ["LOAD", ["STRING", "./system.lisp"]],
+    ...readAllFromString(s),
+  ];
   return evalc({ expr, env: mkGlobalEnv() });
 }
 
