@@ -79,7 +79,11 @@ var COMPILED_PROCEDURES = {
     const methodFn = target[method];
     return methodFn.apply(target, args);
   },
-  // XXX Macros
+  // XXX move to system.lisp once we have &rest
+  LIST: function list(...x) {
+    return x;
+  },
+  // XXX move to system.lisp once we have &rest
   DBG: function dbg(...args) {
     console.log("#=>", ...args);
     return args[0];
@@ -117,7 +121,7 @@ function hostToGuest(x) {
   } else if (typeof x === "string") {
     return ["STRING", x];
   } else if (Array.isArray(x)) {
-    return x;
+    return ["JS-ARRAY", ...x.map(hostToGuest)];
   } else if (typeof x === "function") {
     return ["COMPILED", x];
   } else if (x == null) {
@@ -134,7 +138,7 @@ assertEqual(hostToGuest(12), 12);
 assertEqual(hostToGuest(true), "T");
 assertEqual(hostToGuest(false), "NIL");
 assertEqual(hostToGuest("foo"), ["STRING", "foo"]);
-assertEqual(hostToGuest([12, "foo"]), [12, "foo"]);
+assertEqual(hostToGuest([12, "foo"]), ["JS-ARRAY", 12, ["STRING", "foo"]]);
 assertEqual(hostToGuest(console.log), ["COMPILED", console.log]);
 assertEqual(hostToGuest({ foo: "bar" }), ["JS-OBJ", { foo: "bar" }]);
 
@@ -147,21 +151,21 @@ function guestToHost(x) {
     return x[1];
   } else if (taggedList(x, "COMPILED")) {
     return x[1];
+  } else if (taggedList(x, "JS-ARRAY")) {
+    return x.slice(1).map(guestToHost);
   } else if (x === "NIL") {
     return undefined;
   } else {
-    assert(Array.isArray(x), `Expected Array but got: ${x}`);
-    return x;
+    assert(false, `Unexpected value: ${x}`);
   }
 }
 
-assertEqual(guestToHost(hostToGuest(12)), 12);
-assertEqual(guestToHost(hostToGuest("foo")), "foo");
-assertEqual(guestToHost(hostToGuest([12, "foo"])), [12, "foo"]);
-assertEqual(guestToHost(hostToGuest({ foo: "bar" })), { foo: "bar" });
-assertEqual(guestToHost(hostToGuest(console.log)), console.log);
-assertEqual(guestToHost(hostToGuest(null)), undefined);
-assertEqual(guestToHost(hostToGuest(undefined)), undefined);
+assertEqual(guestToHost(12), 12);
+assertEqual(guestToHost(["STRING", "foo"]), "foo");
+assertEqual(guestToHost(["JS-OBJ", { foo: "bar" }]), { foo: "bar" });
+assertEqual(guestToHost(["COMPILED", console.log]), console.log);
+assertEqual(guestToHost(["JS-ARRAY", 12, ["STRING", "foo"]]), [12, "foo"]);
+assertEqual(guestToHost("NIL"), undefined);
 
 function evalc(cont) {
   // console.log({ type: "EVALC", cont });
@@ -277,6 +281,7 @@ function tryEvalSelfEvaluating(cont) {
     typeof cont.expr === "number" ||
     typeof cont.expr === "boolean" ||
     taggedList(cont.expr, "STRING") ||
+    taggedList(cont.expr, "JS-ARRAY") ||
     taggedList(cont.expr, "JS-OBJ") ||
     taggedList(cont.expr, "PROCEDURE") ||
     taggedList(cont.expr, "CONTINUATION")
