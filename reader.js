@@ -32,17 +32,38 @@ function readAllFromString(string, start = 0) {
 }
 
 function parseExpression(s) {
-  skipWhitespace(s);
+  while (skipWhitespace(s) > 0 || skipComments(s) > 0) {}
   return parseAtom(s) ?? parseList(s);
 }
 
-var WHITES = [" ", "	", "\n", "\r"];
+var WHITES = [" ", "	"];
+var NEWLINE_MARKERS = ["\n", "\r"];
 
 function skipWhitespace(s) {
   let skipped = 0;
-  while (WHITES.includes(s.peekChar())) {
+  while (
+    WHITES.includes(s.peekChar()) ||
+    NEWLINE_MARKERS.includes(s.peekChar())
+  ) {
     s.readChar();
     skipped++;
+  }
+  return skipped;
+}
+
+function skipComments(s) {
+  let skipped = 0;
+  if (s.peekChar() === ";") {
+    s.readChar();
+    skipped += 1;
+    while (!NEWLINE_MARKERS.includes(s.peekChar())) {
+      s.readChar();
+      skipped += 1;
+    }
+    if (NEWLINE_MARKERS.includes(s.peekChar())) {
+      s.readChar();
+      skipped += 1;
+    }
   }
   return skipped;
 }
@@ -50,7 +71,11 @@ function skipWhitespace(s) {
 function parseAtom(s) {
   if (!"()".includes(s.peekChar())) {
     let atom = s.readChar();
-    while (!WHITES.includes(s.peekChar()) && !"()".includes(s.peekChar())) {
+    while (
+      !WHITES.includes(s.peekChar()) &&
+      !NEWLINE_MARKERS.includes(s.peekChar()) &&
+      !"()".includes(s.peekChar())
+    ) {
       atom = `${atom}${s.readChar()}`;
     }
     if (!isNaN(atom)) {
