@@ -85,6 +85,8 @@ assertEqual(
   84,
 );
 
+assertEqual(run(`(list 1 "two" :three)`), ["JS-ARRAY", 1, ["STRING", "two"], ":THREE"]);
+
 assertEqual(
   run(`(let ((x 10)
              (y 32))

@@ -80,10 +80,6 @@ var COMPILED_PROCEDURES = {
     return methodFn.apply(target, args);
   },
   // XXX move to system.lisp once we have &rest
-  LIST: function list(...x) {
-    return x;
-  },
-  // XXX move to system.lisp once we have &rest
   DBG: function dbg(...args) {
     console.log("#=>", ...args);
     return args[0];
@@ -302,6 +298,7 @@ var SPECIAL_OPERATORS = {
   LAMBDA: (s) => tryEvalLambda(s),
   IF: (s) => tryEvalIf(s),
   DEFUN: (s) => tryEvalDefun(s),
+  LIST: (s) => tryEvalList(s),
   PROGN: (s) => tryEvalProgn(s),
   LET: (s) => tryEvalLet(s),
   PROMPT: (s) => tryEvalPrompt(s),
@@ -387,6 +384,28 @@ function tryEvalDefun(cont) {
     const env = new Env(cont.env);
     env.fdefine(name, procd.ret);
     return { ...cont, procd, env, ret: procd.ret };
+  }
+}
+
+function tryEvalList(cont) {
+  if (taggedList(cont.expr, "LIST")) {
+    let state = cont.state ?? "EVAL";
+    let evald = cont.evald ?? ["JS-ARRAY"];
+
+    if (state === "EVAL") {
+      return {
+        expr: cont.expr[evald.length],
+        env: cont.env,
+        cont: { ...cont, state: "EVAL_NEXT" },
+      };
+    } else {
+      assert(state === "EVAL_NEXT", `Unexpected state: ${state}`);
+      assert(cont.resumedFrom.hasOwnProperty("ret"));
+      evald = [...evald, cont.resumedFrom.ret];
+      if (evald.length < cont.expr.length)
+        return { ...cont, state: "EVAL", evald };
+      else return { ...cont, ret: evald };
+    }
   }
 }
 
