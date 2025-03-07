@@ -284,7 +284,8 @@ function tryEvalSelfEvaluating(cont) {
     taggedList(cont.expr, "JS-ARRAY") ||
     taggedList(cont.expr, "JS-OBJ") ||
     taggedList(cont.expr, "PROCEDURE") ||
-    taggedList(cont.expr, "CONTINUATION")
+    taggedList(cont.expr, "CONTINUATION") ||
+    (typeof cont.expr === "string" && cont.expr.charAt(0) === ":")
   ) {
     return { ...cont, ret: cont.expr };
   }
