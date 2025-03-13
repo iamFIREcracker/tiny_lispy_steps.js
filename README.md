@@ -4,7 +4,7 @@
 $ node-rlwrap
 > .load bootstrap.js
 > .load reader.js
-> .load index.js
+> .load eval.js
 > ...
 ```
 
