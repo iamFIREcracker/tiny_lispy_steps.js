@@ -45,3 +45,4 @@ $ node-rlwrap
 
 - [The Metacircular Evaluator](https://sarabander.github.io/sicp/html/4_002e1.xhtml)
 - [Guile: 6.11.5.1 Prompt Primitives](https://www.gnu.org/software/guile/manual/html_node/Prompt-Primitives.html)
+- [Bel](https://paulgraham.com/bel.html)
