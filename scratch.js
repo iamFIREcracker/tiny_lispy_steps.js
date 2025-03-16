@@ -45,3 +45,16 @@ run(`(js-call (js-get *global-this* "console") "log" "YAYAYAYAYA!")`);
 readAllFromString(fs.readFileSync("./examples/async-await.lisp", "utf-8"));
 
 run(`(load "./examples/async-await.lisp")`);
+
+srun(`:keyword`)
+srun(`"foo"`)
+srun(`(fn () :hello)`)
+srun(`(if t :hello :world)`)
+srun(`(if nil :hello :world)`)
+srun(`(if nil :hello
+          nil :world
+              :yay)`)
+srun(`(dyn foo :hello
+        foo)`)
+srun(`(def hello ()
+        :hello-world)`)

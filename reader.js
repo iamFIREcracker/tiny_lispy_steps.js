@@ -81,9 +81,9 @@ function parseAtom(s) {
     if (!isNaN(atom)) {
       atom = Number(atom);
     } else if (atom.startsWith('"') && atom.endsWith('"')) {
-      atom = ["STRING", atom.slice(1, -1)];
+      atom = ["lit", "str", atom.slice(1, -1)];
     } else {
-      atom = atom.toUpperCase();
+      atom = atom;
     }
     return atom;
   }
