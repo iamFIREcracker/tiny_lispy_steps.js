@@ -1,10 +1,12 @@
 function evalc(ctx) {
+  dbg("evalc", ctx);
   return (
     doNothingIfFinished(ctx) ??
     tryEvalStackMark(ctx) ??
     tryEvalSelfEvaluating(ctx) ??
     tryEvalVariable(ctx) ??
     tryEvalSpecialOperator(ctx) ??
+    tryEvalApplication(ctx) ??
     notSupportedError()
   );
 
@@ -86,7 +88,7 @@ function tryEvalVariable(ctx) {
 function lookup(e, a, s, g) {
   return (
     binding(e, s) ??
-    a[e] ??
+    a?.[e] ??
     g[e] ??
     ((e === "*scope*" && ["ENV", a]) || (e === "*globe*" && ["ENV", g]))
   );
@@ -117,16 +119,28 @@ function special(name, fn) {
 }
 
 special("fn", function fn(ctx) {
-  const [[_, params, ...body], a] = top(ctx.s);
+  const [[_, parms, ...body], a] = top(ctx.s);
   return {
     ...ctx,
     s: butTop(ctx.s),
-    r: push(mkProcedure(a, params, ...body), ctx.r),
+    r: push(mkProcedure(a, parms, ...body), ctx.r),
   };
 });
 
-function mkProcedure(a, params, ...body) {
-  return ["lit", "proc", a, params, prognify(body)];
+function mkProcedure(a, parms, ...body) {
+  return ["lit", "proc", a, parms, prognify(body)];
+}
+
+function procLexical(proc) {
+  return proc[2];
+}
+
+function procParams(proc) {
+  return proc[3];
+}
+
+function procBody(proc) {
+  return proc[4];
 }
 
 function prognify(body) {
@@ -189,12 +203,62 @@ function dyn2(ctx) {
 }
 
 special("def", function def(ctx) {
-  const [[_, name, params, ...body], a] = top(ctx.s);
-  const proc = mkProcedure(a, params, ...body);
+  const [[_, name, parms, ...body], a] = top(ctx.s);
+  const proc = mkProcedure(a, parms, ...body);
   ctx.g[name] = proc;
-  return { ...ctx, s: butTop(ctx.s), r: push(proc, ctx.r)};
+  return { ...ctx, s: butTop(ctx.s), r: push(proc, ctx.r) };
 });
 
+function tryEvalApplication(ctx) {
+  const [[op, ...args], a] = top(ctx.s);
+  return {
+    ...ctx,
+    s: push([op], push([[smark, "call", "applyc", ...args], a], butTop(ctx.s))),
+  };
+}
+
+function applyc(ctx) {
+  const [[_smark, _call, _applyc, ...rest], _] = top(ctx.s);
+  assert(rest.length <= top(ctx.r)[3].length, "INVALID APPLY ARGS NO");
+  switch (top(ctx.r)[1]) {
+    case "proc":
+      return applycProc(ctx);
+  }
+}
+
+function applycProc(ctx) {
+  const [[_smark, _call, _applycProc, ...rest], a] = top(ctx.s);
+  return {
+    ...ctx,
+    s: [
+      ...procParams(top(ctx.r)).map((_, i) => [rest[i] ?? "nil", a]),
+      [[smark, "call", "applycProc2", top(ctx.r)], a],
+      ...butTop(ctx.s),
+    ],
+    r: butTop(ctx.r),
+  };
+}
+
+function applycProc2(ctx) {
+  const [[_smark, _call, _applycProoc2, proc], _] = top(ctx.s);
+  const parms = procParams(proc);
+  const vals = ctx.r.slice(0, parms.length);
+  const r2 = ctx.r.slice(parms.length);
+  return dbg({
+    ...ctx,
+    s: push([procBody(proc), env(proc, parms, vals)], butTop(ctx.s)),
+    r: r2
+  });
+
+  function env(proc, parms, vals) {
+    assert(parms.length === vals.length, "INVALID APPLY ARGS NO");
+    const a = {...procLexical(proc)};
+    for (let i = 0; i < parms.length; i++) {
+      a[parms[i]] = vals[i];
+    }
+    return a;
+  }
+}
 
 function run(e, g = {}) {
   let cont = { s: [[e, []]], r: [], g };
