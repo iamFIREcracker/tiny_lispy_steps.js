@@ -1,5 +1,5 @@
 function evalc(ctx) {
-  dbg("evalc", ctx);
+  // dbg("evalc", ctx);
   return (
     doNothingIfFinished(ctx) ??
     tryEvalStackMark(ctx) ??
@@ -153,31 +153,31 @@ function prognify(body) {
 }
 
 special("if", function if_(ctx) {
-  const [[_, ...rest], a] = top(ctx.s);
-  if (rest.length === 0) {
+  const [[_, ...args], a] = top(ctx.s);
+  if (args.length === 0) {
     return { ...ctx, s: butTop(ctx.s), r: push("nil", ctx.r) };
   }
-  if (rest.length === 1) {
-    return { ...ctx, s: push([rest[0], a], butTop(ctx.s)) };
+  if (args.length === 1) {
+    return { ...ctx, s: push([args[0], a], butTop(ctx.s)) };
   }
   return {
     ...ctx,
     s: push(
-      [rest[0], a],
-      push([[smark, "call", "if2", ...rest.slice(1)], a], butTop(ctx.s)),
+      [args[0], a],
+      push([[smark, "call", "if2", ...args.slice(1)], a], butTop(ctx.s)),
     ),
   };
 });
 
-function if2(ctx, args) {
+function if2(ctx) {
   const test = top(ctx.r);
-  const [[_smark, _call, _if2, ...rest], a] = top(ctx.s);
+  const [[_smark, _call, _if2, ...args], a] = top(ctx.s);
   if (test !== "nil") {
-    return { ...ctx, s: push([rest[0], a], butTop(ctx.s)), r: butTop(ctx.r) };
+    return { ...ctx, s: push([args[0], a], butTop(ctx.s)), r: butTop(ctx.r) };
   }
   return {
     ...ctx,
-    s: push([["if", ...rest.slice(1)], a], butTop(ctx.s)),
+    s: push([["if", ...args.slice(1)], a], butTop(ctx.s)),
     r: butTop(ctx.r),
   };
 }
@@ -218,8 +218,7 @@ function tryEvalApplication(ctx) {
 }
 
 function applyc(ctx) {
-  const [[_smark, _call, _applyc, ...rest], _] = top(ctx.s);
-  assert(rest.length <= top(ctx.r)[3].length, "INVALID APPLY ARGS NO");
+  const [[_smark, _call, _applyc, ...args], _] = top(ctx.s);
   switch (top(ctx.r)[1]) {
     case "proc":
       return applycProc(ctx);
@@ -227,11 +226,11 @@ function applyc(ctx) {
 }
 
 function applycProc(ctx) {
-  const [[_smark, _call, _applycProc, ...rest], a] = top(ctx.s);
+  const [[_smark, _call, _applycProc, ...args], a] = top(ctx.s);
   return {
     ...ctx,
     s: [
-      ...procParams(top(ctx.r)).map((_, i) => [rest[i] ?? "nil", a]),
+      ...procParams(top(ctx.r)).map((_, i) => [args[i] ?? "nil", a]),
       [[smark, "call", "applycProc2", top(ctx.r)], a],
       ...butTop(ctx.s),
     ],
@@ -244,15 +243,15 @@ function applycProc2(ctx) {
   const parms = procParams(proc);
   const vals = ctx.r.slice(0, parms.length);
   const r2 = ctx.r.slice(parms.length);
-  return dbg({
+  return {
     ...ctx,
     s: push([procBody(proc), env(proc, parms, vals)], butTop(ctx.s)),
-    r: r2
-  });
+    r: r2,
+  };
 
   function env(proc, parms, vals) {
     assert(parms.length === vals.length, "INVALID APPLY ARGS NO");
-    const a = {...procLexical(proc)};
+    const a = { ...procLexical(proc) };
     for (let i = 0; i < parms.length; i++) {
       a[parms[i]] = vals[i];
     }

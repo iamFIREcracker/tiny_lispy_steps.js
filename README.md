@@ -10,10 +10,9 @@ $ node-rlwrap
 
 ## SUPPORTED:
 
-- `SYMBOL-FUNCTION`
-- `LAMBDA`
+- `FN`
 - `IF`
-- `DEFUN`
+- `DEF`
 - `PROGN`
 - `LET`
 - `PROMPT` / `ABORT`
