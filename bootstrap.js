@@ -2,7 +2,11 @@ var assert = require("node:assert/strict").ok;
 var assertEqual = require("node:assert/strict").deepEqual;
 
 function dbg(...args) {
-  console.log(...args);
+  console.log(
+    ...args.map((v) =>
+      util.inspect(v, { showHidden: false, depth: null, colors: true }),
+    ),
+  );
   return args[0];
 }
 
