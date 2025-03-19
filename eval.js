@@ -259,6 +259,54 @@ function applycProc2(ctx) {
   }
 }
 
+special("progn", function progn(ctx) {
+  const [[_, ...args], a] = top(ctx.s);
+  if (args.length === 0) {
+    return { ...ctx, s: butTop(ctx.s), r: push("nil", ctx.r) };
+  }
+  return {
+    ...ctx,
+    s: push(
+      [args[0], a],
+      push([[smark, "call", "progn2", ...args.slice(1)], a], butTop(ctx.s)),
+    ),
+  };
+});
+
+function progn2(ctx) {
+  const [[_smark, _call, _progn2, ...args], a] = top(ctx.s);
+  if (args.length === 0) {
+    return { ...ctx, s: butTop(ctx.s) };
+  }
+  return {
+    ...ctx,
+    s: push([["progn", ...args], a], butTop(ctx.s)),
+    r: butTop(ctx.r),
+  };
+}
+
+special("let", function let(ctx) {
+  const [[_, parm, e2, ...body], a] = top(ctx.s);
+  return {
+    ...ctx,
+    s: push(
+      [e2, a],
+      push([[smark, "call", "let2", parm, prognify(body)], a], butTop(ctx.s)),
+    ),
+  };
+});
+
+function let2(ctx) {
+  const [[_smark, _call, _let2, parm, body], a] = top(ctx.s);
+  const val = ctx.r[0];
+  const r2 = ctx.r.slice(1);
+  return {
+    ...ctx,
+    s: push([body, { ...a, [parm]: val }], butTop(ctx.s)),
+    r: r2,
+  };
+}
+
 function run(e, g = {}) {
   let cont = { s: [[e, []]], r: [], g };
   do {
