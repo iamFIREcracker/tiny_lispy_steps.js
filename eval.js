@@ -289,7 +289,7 @@ function applycClo(ctx) {
 function applycClo2(ctx) {
   const [[_smark, _call, _applycClo2, clo], _] = top(ctx.s);
   const parms = cloParams(clo);
-  const vals = ctx.r.slice(0, parms.length);
+  const vals = ctx.r.slice(0, parms.length).reverse();
   const r2 = ctx.r.slice(parms.length);
   return {
     ...ctx,
