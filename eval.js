@@ -248,11 +248,13 @@ function dyn2(ctx) {
   };
 }
 
+// TODO: convert into a macro
 special("def", function def(ctx) {
   const [[_, name, parms, ...body], a] = top(ctx.s);
-  const proc = mkProcedure(a, parms, ...body);
-  ctx.g[name] = proc;
-  return { ...ctx, s: butTop(ctx.s), r: push(proc, ctx.r) };
+  return {
+    ...ctx,
+    s: push([["set", name, mkProcedure(a, parms, ...body)]], butTop(ctx.s)),
+  };
 });
 
 function tryEvalApplication(ctx) {
