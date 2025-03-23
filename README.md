@@ -10,13 +10,13 @@ $ node-rlwrap
 
 ## SUPPORTED:
 
+- `SET`
 - `FN`
 - `IF`
 - `DEF`
 - `PROGN`
 - `LET`
 - `PROMPT` / `ABORT`
-- `CALL`
 - `PAUSE` to pause the execution and allow you to inspect the current
   continuation.  To resume, simply call `evalc` or `evalca` that continuation.
 - `LOAD` to load forms from a file
@@ -39,6 +39,7 @@ $ node-rlwrap
   JS-THEN.  Maybe we store all the async tasks somewhere, so that `run` can
   switch to a different async stream when the current one is done; similarly
   for manually stepping through the execution via `evalc`.
+- Make SET work with places, e.g., (car v), and not just symbols
 
 ## Links:
 

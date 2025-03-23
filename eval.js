@@ -87,7 +87,7 @@ function tryEvalVariable(ctx) {
 
 function lookup(e, a, s, g) {
   return (
-    binding(e, s) ??
+    binding(e, s)?.[0] ??
     a?.[e] ??
     g[e] ??
     ((e === "*scope*" && ["ENV", a]) || (e === "*globe*" && ["ENV", g]))
@@ -98,7 +98,7 @@ function binding(e, s) {
   for (const [e2, _] of s) {
     if (taggedList(e2, smark) && e2[1] === "bind") {
       if (e2[2][e] != null) {
-        return e2[2][e];
+        return [e2[2][e], e2[2]]; // return value and place
       }
     }
   }
@@ -116,6 +116,52 @@ function tryEvalSpecialOperator(ctx) {
 function special(name, fn) {
   SPECIAL_OPERATORS[name] = fn;
   return fn;
+}
+
+special("set", function set(ctx) {
+  const [[_, ...bindings], a] = top(ctx.s);
+  if (bindings.length < 2) {
+    assert(false, "INVALID SET ARGS NO"); // TODO: SIGERR
+  } else {
+    const [v, e, ...bindings2] = bindings;
+    return {
+      ...ctx,
+      s: push(
+        [e, a],
+        push([[smark, "call", "set2", v, ...bindings2], a], butTop(ctx.s)),
+      ),
+    };
+  }
+});
+
+function set2(ctx) {
+  const [[_smark, _call, _set2, v, ...bindings], a] = top(ctx.s);
+  const o = where(v, a, ctx.s, ctx.g);
+  o[v] = top(ctx.r);
+  const ctx2 = {
+    ...ctx,
+    s: butTop(ctx.s),
+  };
+  if (bindings.length === 0) {
+    return ctx2;
+  } else {
+    return {
+      ...ctx2,
+      s: push([["set", ...bindings], a], ctx2.s),
+      r: butTop(ctx2.r),
+    };
+  }
+}
+
+function where (e, a, s, g) {
+  let o;
+  if (o = binding(e, s) != null) {
+    return o;
+  } else if (a?.[e] != null) {
+    return a;
+  } else {
+    return g;
+  }
 }
 
 special("fn", function fn(ctx) {
@@ -250,7 +296,7 @@ function applycProc2(ctx) {
   };
 
   function env(proc, parms, vals) {
-    assert(parms.length === vals.length, "INVALID APPLY ARGS NO");
+    assert(parms.length === vals.length, "INVALID APPLY ARGS NO"); // TODO: SIGERR
     const a = { ...procLexical(proc) };
     for (let i = 0; i < parms.length; i++) {
       a[parms[i]] = vals[i];
