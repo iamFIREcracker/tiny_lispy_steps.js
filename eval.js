@@ -153,9 +153,9 @@ function set2(ctx) {
   }
 }
 
-function where (e, a, s, g) {
+function where(e, a, s, g) {
   let o;
-  if (o = binding(e, s) != null) {
+  if ((o = binding(e, s) != null)) {
     return o;
   } else if (a?.[e] != null) {
     return a;
@@ -169,24 +169,21 @@ special("fn", function fn(ctx) {
   return {
     ...ctx,
     s: butTop(ctx.s),
-    r: push(mkProcedure(a, parms, ...body), ctx.r),
+    r: push(["lit", "clo", a, parms, prognify(body)], ctx.r),
   };
 });
 
-function mkProcedure(a, parms, ...body) {
-  return ["lit", "proc", a, parms, prognify(body)];
+
+function cloLexical(clo) {
+  return clo[2];
 }
 
-function procLexical(proc) {
-  return proc[2];
+function cloParams(clo) {
+  return clo[3];
 }
 
-function procParams(proc) {
-  return proc[3];
-}
-
-function procBody(proc) {
-  return proc[4];
+function cloBody(clo) {
+  return clo[4];
 }
 
 function prognify(body) {
@@ -253,7 +250,10 @@ special("def", function def(ctx) {
   const [[_, name, parms, ...body], a] = top(ctx.s);
   return {
     ...ctx,
-    s: push([["set", name, mkProcedure(a, parms, ...body)]], butTop(ctx.s)),
+    s: push(
+      [["set", name, ["lit", "clo", a, parms, prognify(body)]]],
+      butTop(ctx.s),
+    ),
   };
 });
 
@@ -268,38 +268,38 @@ function tryEvalApplication(ctx) {
 function applyc(ctx) {
   const [[_smark, _call, _applyc, ...args], _] = top(ctx.s);
   switch (top(ctx.r)[1]) {
-    case "proc":
-      return applycProc(ctx);
+    case "clo":
+      return applycClo(ctx);
   }
 }
 
-function applycProc(ctx) {
-  const [[_smark, _call, _applycProc, ...args], a] = top(ctx.s);
+function applycClo(ctx) {
+  const [[_smark, _call, _applycClo, ...args], a] = top(ctx.s);
   return {
     ...ctx,
     s: [
-      ...procParams(top(ctx.r)).map((_, i) => [args[i] ?? "nil", a]),
-      [[smark, "call", "applycProc2", top(ctx.r)], a],
+      ...cloParams(top(ctx.r)).map((_, i) => [args[i] ?? "nil", a]),
+      [[smark, "call", "applycClo2", top(ctx.r)], a],
       ...butTop(ctx.s),
     ],
     r: butTop(ctx.r),
   };
 }
 
-function applycProc2(ctx) {
-  const [[_smark, _call, _applycProoc2, proc], _] = top(ctx.s);
-  const parms = procParams(proc);
+function applycClo2(ctx) {
+  const [[_smark, _call, _applycClo2, clo], _] = top(ctx.s);
+  const parms = cloParams(clo);
   const vals = ctx.r.slice(0, parms.length);
   const r2 = ctx.r.slice(parms.length);
   return {
     ...ctx,
-    s: push([procBody(proc), env(proc, parms, vals)], butTop(ctx.s)),
+    s: push([cloBody(clo), env(clo, parms, vals)], butTop(ctx.s)),
     r: r2,
   };
 
-  function env(proc, parms, vals) {
+  function env(clo, parms, vals) {
     assert(parms.length === vals.length, "INVALID APPLY ARGS NO"); // TODO: SIGERR
-    const a = { ...procLexical(proc) };
+    const a = { ...cloLexical(clo) };
     for (let i = 0; i < parms.length; i++) {
       a[parms[i]] = vals[i];
     }
