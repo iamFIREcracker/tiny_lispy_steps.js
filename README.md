@@ -12,16 +12,14 @@ $ node-rlwrap
 
 - `SET`
 - `FN`
+- `QUOTE`
+- `QUASIQUOTE`, `UNQUOTE`
 - 'MACRO'
 - `IF`
 - `DEF`
 - 'MAC'
 - `PROGN`
 - `LET`
-- `PROMPT` / `ABORT`
-- `PAUSE` to pause the execution and allow you to inspect the current
-  continuation.  To resume, simply call `evalc` or `evalca` that continuation.
-- `LOAD` to load forms from a file
 
 ### JavaScript interoperability
 
@@ -31,6 +29,12 @@ $ node-rlwrap
 
 ## TODO:
 
+- `&rest` for lambda lists
+- `PROMPT` / `ABORT`
+- `PAUSE` to pause the execution and allow you to inspect the current
+  continuation.  To resume, simply call `evalc` or `evalca` that continuation.
+- `LOAD` to load forms from a file
+- SPLICE
 - BREAKPOINT to pause the evaluation: could wrap the whole execution around
   a `(PROMPT :DEBUG ... (lambda (k) k))`
 - JS-CATCH
