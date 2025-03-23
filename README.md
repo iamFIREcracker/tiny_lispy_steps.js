@@ -12,8 +12,10 @@ $ node-rlwrap
 
 - `SET`
 - `FN`
+- 'MACRO'
 - `IF`
 - `DEF`
+- 'MAC'
 - `PROGN`
 - `LET`
 - `PROMPT` / `ABORT`
@@ -29,8 +31,6 @@ $ node-rlwrap
 
 ## TODO:
 
-- Environment is kind of fucked up at the moment... all the variables are
-  _dynamic_ -- no concept of lexical scope
 - BREAKPOINT to pause the evaluation: could wrap the whole execution around
   a `(PROMPT :DEBUG ... (lambda (k) k))`
 - JS-CATCH

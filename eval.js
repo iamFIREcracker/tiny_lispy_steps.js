@@ -118,6 +118,64 @@ function special(name, fn) {
   return fn;
 }
 
+special("quote", function quote(ctx) {
+  const [[_, e]] = top(ctx.s);
+  return {
+    ...ctx,
+    s: butTop(ctx.s),
+    r: push(e, ctx.r),
+  };
+});
+
+special("quasiquote", function quasiquote(ctx) {
+  const [[_, e], a] = top(ctx.s);
+  const ee = [];
+  unquotes(e);
+
+  return {
+    ...ctx,
+    s: [
+      ...ee.map((e2) => [e2, a]),
+      [[smark, "call", "quasiquote2", e, ee.length]],
+      ...butTop(ctx.s),
+    ],
+    r: butTop(ctx.r),
+  };
+
+  function unquotes(e) {
+    if (taggedList(e, "unquote")) {
+      ee.push(e[1]);
+    } else if (taggedList(e, "quote")) {
+      return;
+    } else if (Array.isArray(e)) {
+      e.map(unquotes);
+    } else {
+      return;
+    }
+  }
+});
+
+function quasiquote2(ctx) {
+  const [[_smark, _call, _qq2, e, n]] = top(ctx.s);
+  const vals = ctx.r.slice(0, n);
+  const r2 = ctx.r.slice(n);
+  const e2 = reassemble(e);
+
+  return { ...ctx, s: butTop(ctx.s), r: push(e2, r2) };
+
+  function reassemble(e) {
+    if (taggedList(e, "unquote")) {
+      return vals.pop();
+    } else if (taggedList(e, "quote")) {
+      return e;
+    } else if (Array.isArray(e)) {
+      return e.map(reassemble);
+    } else {
+      return e;
+    }
+  }
+}
+
 special("set", function set(ctx) {
   const [[_, ...bindings], a] = top(ctx.s);
   if (bindings.length < 2) {
@@ -173,6 +231,14 @@ special("fn", function fn(ctx) {
   };
 });
 
+special("macro", function macro(ctx) {
+  const [[_, parms, ...body], a] = top(ctx.s);
+  return {
+    ...ctx,
+    s: butTop(ctx.s),
+    r: push(["lit", "mac", a, parms, prognify(body)], ctx.r),
+  };
+});
 
 function cloLexical(clo) {
   return clo[2];
@@ -257,6 +323,18 @@ special("def", function def(ctx) {
   };
 });
 
+// TODO: convert into a macro
+special("mac", function mac(ctx) {
+  const [[_, name, parms, ...body], a] = top(ctx.s);
+  return {
+    ...ctx,
+    s: push(
+      [["set", name, ["lit", "mac", a, parms, prognify(body)]]],
+      butTop(ctx.s),
+    ),
+  };
+});
+
 function tryEvalApplication(ctx) {
   const [[op, ...args], a] = top(ctx.s);
   return {
@@ -270,6 +348,8 @@ function applyc(ctx) {
   switch (top(ctx.r)[1]) {
     case "clo":
       return applycClo(ctx);
+    case "mac":
+      return applycMac(ctx);
   }
 }
 
@@ -305,6 +385,41 @@ function applycClo2(ctx) {
     }
     return a;
   }
+}
+
+function applycMac(ctx) {
+  const [[_smark, _call, _applycMac, ...vals], a] = top(ctx.s);
+  const mac = top(ctx.r);
+  assert(lit(mac, "mac"), `Not a MACRO: ${mac}`); // TODO: SIGERR
+  const clo = mac;
+  const parms = cloParams(clo);
+  return {
+    ...ctx,
+    s: [
+      [cloBody(clo), env(clo, parms, vals)],
+      [[smark, "call", "applycMac2", a]],
+      ...butTop(ctx.s),
+    ],
+    r: butTop(ctx.r),
+  };
+
+  function env(clo, parms, vals) {
+    assert(parms.length === vals.length, "INVALID APPLY ARGS NO"); // TODO: SIGERR
+    const a = { ...cloLexical(clo) };
+    for (let i = 0; i < parms.length; i++) {
+      a[parms[i]] = vals[i];
+    }
+    return a;
+  }
+}
+
+function applycMac2(ctx) {
+  const [[_smark, _call, _applycMac2, a]] = top(ctx.s);
+  return {
+    ...ctx,
+    s: push([top(ctx.r), a], butTop(ctx.s)),
+    r: butTop(ctx.r),
+  };
 }
 
 special("progn", function progn(ctx) {
