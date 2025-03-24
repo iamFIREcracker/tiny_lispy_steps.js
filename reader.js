@@ -33,7 +33,15 @@ function readAllFromString(string, start = 0) {
 
 function parseExpression(s) {
   while (skipWhitespace(s) > 0 || skipComments(s) > 0) {}
-  return parseAtom(s) ?? parseList(s);
+  return parseQuote(s) ?? parseAtom(s) ?? parseList(s);
+}
+
+function parseQuote(s) {
+  if (s.peekChar() === "'") {
+    s.readChar(); // consume the quote character
+    const expr = parseExpression(s);
+    return ["quote", expr];
+  }
 }
 
 var WHITES = [" ", "	"];
