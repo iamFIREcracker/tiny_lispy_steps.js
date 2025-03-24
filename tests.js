@@ -16,6 +16,17 @@ assertEqual(parseList(new StringStream(`(123 "foo" x)`)), [
 assertEqual(parseList(new StringStream(`(0)`)), [0]);
 assertEqual(parseList(new StringStream('("")')), [["STRING", ""]]);
 
+// Tests for quote parsing
+assertEqual(parseQuote(new StringStream("'foo")), ["quote", "FOO"]);
+assertEqual(parseQuote(new StringStream("'(1 2 3)")), ["quote", [1, 2, 3]]);
+assertEqual(parseQuote(new StringStream("'\"hello\"")), ["quote", ["STRING", "hello"]]);
+assertEqual(parseQuote(new StringStream("not-a-quote")), undefined);
+
+// Test quote parsing through readFromString
+assertEqual(readFromString("'foo"), ["quote", "FOO"]);
+assertEqual(readFromString("'(a b c)"), ["quote", ["A", "B", "C"]]);
+assertEqual(readFromString("'(1 2 '(3 4))"), ["quote", [1, 2, ["quote", [3, 4]]]]);
+
 assertEqual(
   readFromString(
     `(defun hello-world ()
@@ -97,6 +108,12 @@ assertEqual(
 assertEqual(run(`(quote 123)`), 123);
 assertEqual(run(`(quote (foo "bar"))`), ["FOO", ["STRING", "bar"]]);
 // assertEqual(run(`(dbg (quote (+ 1 2)) (+ 1 2))`), ["+", 1, 2]);
+
+// Tests for quote syntax sugar
+assertEqual(run(`'123`), 123);
+assertEqual(run(`'(foo "bar")`), ["FOO", ["STRING", "bar"]]);
+assertEqual(run(`'(+ 1 2)`), ["+", 1, 2]);
+assertEqual(run(`(list '+ 1 2)`), ["JS-ARRAY", "+", 1, 2]);
 
 assertEqual(evalca({ expr: ["QUASIQUOTE", ["X"]] }), ["X"]);
 assertEqual(
