@@ -33,7 +33,7 @@ function readAllFromString(string, start = 0) {
 
 function parseExpression(s) {
   while (skipWhitespace(s) > 0 || skipComments(s) > 0) {}
-  return parseQuote(s) ?? parseAtom(s) ?? parseList(s);
+  return parseQuote(s) ?? parseQuasiquote(s) ?? parseUnquote(s) ?? parseAtom(s) ?? parseList(s);
 }
 
 function parseQuote(s) {
@@ -41,6 +41,22 @@ function parseQuote(s) {
     s.readChar(); // consume the quote character
     const expr = parseExpression(s);
     return ["quote", expr];
+  }
+}
+
+function parseQuasiquote(s) {
+  if (s.peekChar() === '`') {
+    s.readChar(); // consume the backtick character
+    const expr = parseExpression(s);
+    return ["quasiquote", expr];
+  }
+}
+
+function parseUnquote(s) {
+  if (s.peekChar() === ',') {
+    s.readChar(); // consume the comma character
+    const expr = parseExpression(s);
+    return ["unquote", expr];
   }
 }
 

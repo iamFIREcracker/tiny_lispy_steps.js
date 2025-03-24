@@ -115,6 +115,18 @@ assertEqual(run(`'(foo "bar")`), ["FOO", ["STRING", "bar"]]);
 assertEqual(run(`'(+ 1 2)`), ["+", 1, 2]);
 assertEqual(run(`(list '+ 1 2)`), ["JS-ARRAY", "+", 1, 2]);
 
+// Tests for quasiquote and unquote syntax
+assertEqual(parseQuasiquote(new StringStream("`foo")), ["quasiquote", "FOO"]);
+assertEqual(parseQuasiquote(new StringStream("`(1 2 3)")), ["quasiquote", [1, 2, 3]]);
+assertEqual(parseUnquote(new StringStream(",foo")), ["unquote", "FOO"]);
+assertEqual(parseUnquote(new StringStream(",(+ 1 2)")), ["unquote", ["+", 1, 2]]);
+
+// Test through readFromString
+assertEqual(readFromString("`foo"), ["quasiquote", "FOO"]);
+assertEqual(readFromString("`(a b c)"), ["quasiquote", ["A", "B", "C"]]);
+assertEqual(readFromString("`(1 2 ,x)"), ["quasiquote", [1, 2, ["unquote", "X"]]]);
+assertEqual(readFromString("`(1 2 ,(+ 3 4))"), ["quasiquote", [1, 2, ["unquote", ["+", 3, 4]]]]);
+
 assertEqual(evalca({ expr: ["QUASIQUOTE", ["X"]] }), ["X"]);
 assertEqual(
   evalca({
