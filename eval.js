@@ -366,10 +366,7 @@ function applycClo(ctx) {
   };
 }
 
-function applycClo2(ctx) {
-  const [[_smark, _call, _applycClo2, clo], _] = top(ctx.s);
-  const parms = cloParams(clo);
-  
+function parseParamsList(parms) {
   let regularParams = [];
   let restParam = null;
   
@@ -391,6 +388,15 @@ function applycClo2(ctx) {
       restParam = null;
     }
   }
+  
+  return { regularParams, restParam };
+}
+
+function applycClo2(ctx) {
+  const [[_smark, _call, _applycClo2, clo], _] = top(ctx.s);
+  const parms = cloParams(clo);
+  
+  const { regularParams, restParam } = parseParamsList(parms);
   
   // Get values for regular parameters
   const regularVals = ctx.r.slice(0, regularParams.length).reverse();
@@ -434,27 +440,7 @@ function applycMac(ctx) {
   const clo = mac;
   const parms = cloParams(clo);
   
-  let regularParams = [];
-  let restParam = null;
-  
-  // Handle the case where parms is a single symbol (not an array)
-  if (!Array.isArray(parms)) {
-    // Treat a single symbol as a rest parameter
-    restParam = parms;
-  } else {
-    // Check if we have a dotted parameter list
-    const dotIndex = parms.indexOf(".");
-    
-    if (dotIndex !== -1) {
-      // We have a rest parameter
-      regularParams = parms.slice(0, dotIndex);
-      restParam = parms[dotIndex + 1]; // Get the parameter after the dot
-    } else {
-      // No rest parameter
-      regularParams = parms;
-      restParam = null;
-    }
-  }
+  const { regularParams, restParam } = parseParamsList(parms);
   
   // Get values for regular parameters
   const regularVals = vals.slice(0, regularParams.length);
