@@ -370,18 +370,26 @@ function applycClo2(ctx) {
   const [[_smark, _call, _applycClo2, clo], _] = top(ctx.s);
   const parms = cloParams(clo);
   
-  // Check if we have a dotted parameter list
-  const dotIndex = parms.indexOf(".");
-  let regularParams, restParam;
+  let regularParams = [];
+  let restParam = null;
   
-  if (dotIndex !== -1) {
-    // We have a rest parameter
-    regularParams = parms.slice(0, dotIndex);
-    restParam = parms[dotIndex + 1]; // Get the parameter after the dot
+  // Handle the case where parms is a single symbol (not an array)
+  if (!Array.isArray(parms)) {
+    // Treat a single symbol as a rest parameter
+    restParam = parms;
   } else {
-    // No rest parameter
-    regularParams = parms;
-    restParam = null;
+    // Check if we have a dotted parameter list
+    const dotIndex = parms.indexOf(".");
+    
+    if (dotIndex !== -1) {
+      // We have a rest parameter
+      regularParams = parms.slice(0, dotIndex);
+      restParam = parms[dotIndex + 1]; // Get the parameter after the dot
+    } else {
+      // No rest parameter
+      regularParams = parms;
+      restParam = null;
+    }
   }
   
   // Get values for regular parameters
@@ -426,18 +434,26 @@ function applycMac(ctx) {
   const clo = mac;
   const parms = cloParams(clo);
   
-  // Check if we have a dotted parameter list
-  const dotIndex = parms.indexOf(".");
-  let regularParams, restParam;
+  let regularParams = [];
+  let restParam = null;
   
-  if (dotIndex !== -1) {
-    // We have a rest parameter
-    regularParams = parms.slice(0, dotIndex);
-    restParam = parms[dotIndex + 1]; // Get the parameter after the dot
+  // Handle the case where parms is a single symbol (not an array)
+  if (!Array.isArray(parms)) {
+    // Treat a single symbol as a rest parameter
+    restParam = parms;
   } else {
-    // No rest parameter
-    regularParams = parms;
-    restParam = null;
+    // Check if we have a dotted parameter list
+    const dotIndex = parms.indexOf(".");
+    
+    if (dotIndex !== -1) {
+      // We have a rest parameter
+      regularParams = parms.slice(0, dotIndex);
+      restParam = parms[dotIndex + 1]; // Get the parameter after the dot
+    } else {
+      // No rest parameter
+      regularParams = parms;
+      restParam = null;
+    }
   }
   
   // Get values for regular parameters
