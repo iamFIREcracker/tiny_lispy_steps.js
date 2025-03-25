@@ -115,14 +115,35 @@ function parseAtom(s) {
 
 function parseList(s) {
   if (s.peekChar() === "(") {
-    s.readChar(); // swallow parenthesis
+    s.readChar(); // swallow opening parenthesis
     const ret = [];
     let parsed;
+    
+    // Parse elements until we hit a dot or closing paren
     while (true) {
+      // Skip whitespace and comments before checking for dot or closing paren
+      while (skipWhitespace(s) > 0 || skipComments(s) > 0) {}
+      
+      // Check if we've reached the end of the list or a dot
+      if (s.peekChar() === ")") break;
+      if (s.peekChar() === ".") {
+        s.readChar(); // consume the dot
+        skipWhitespace(s); // skip whitespace after dot
+        
+        // Parse the rest parameter
+        const restParam = parseExpression(s);
+        ret.push(".", restParam); // Add dot and rest param to the list
+        
+        // Skip whitespace before closing paren
+        skipWhitespace(s);
+        break;
+      }
+      
       parsed = parseExpression(s);
       if (parsed == null) break;
       ret.push(parsed);
     }
+    
     assert(s.readChar() === ")", "Expected )");
     return ret;
   }

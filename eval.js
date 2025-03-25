@@ -369,20 +369,52 @@ function applycClo(ctx) {
 function applycClo2(ctx) {
   const [[_smark, _call, _applycClo2, clo], _] = top(ctx.s);
   const parms = cloParams(clo);
-  const vals = ctx.r.slice(0, parms.length).reverse();
-  const r2 = ctx.r.slice(parms.length);
+  
+  // Check if we have a dotted parameter list
+  const dotIndex = parms.indexOf(".");
+  let regularParams, restParam;
+  
+  if (dotIndex !== -1) {
+    // We have a rest parameter
+    regularParams = parms.slice(0, dotIndex);
+    restParam = parms[dotIndex + 1]; // Get the parameter after the dot
+  } else {
+    // No rest parameter
+    regularParams = parms;
+    restParam = null;
+  }
+  
+  // Get values for regular parameters
+  const regularVals = ctx.r.slice(0, regularParams.length).reverse();
+  
+  // Get values for rest parameter (if any)
+  const restVals = restParam ? 
+    ctx.r.slice(regularParams.length).reverse() : 
+    [];
+  
+  // Update result stack
+  const r2 = ctx.r.slice(regularParams.length + (restParam ? restVals.length : 0));
+  
   return {
     ...ctx,
-    s: push([cloBody(clo), env(clo, parms, vals)], butTop(ctx.s)),
+    s: push([cloBody(clo), env(clo, regularParams, restParam, regularVals, restVals)], butTop(ctx.s)),
     r: r2,
   };
 
-  function env(clo, parms, vals) {
-    assert(parms.length === vals.length, "INVALID APPLY ARGS NO"); // TODO: SIGERR
+  function env(clo, regularParams, restParam, regularVals, restVals) {
+    assert(regularParams.length === regularVals.length, "INVALID APPLY ARGS NO"); // TODO: SIGERR
     const a = { ...cloLexical(clo) };
-    for (let i = 0; i < parms.length; i++) {
-      a[parms[i]] = vals[i];
+    
+    // Bind regular parameters
+    for (let i = 0; i < regularParams.length; i++) {
+      a[regularParams[i]] = regularVals[i];
     }
+    
+    // Bind rest parameter if it exists
+    if (restParam) {
+      a[restParam] = restVals;
+    }
+    
     return a;
   }
 }
@@ -393,22 +425,51 @@ function applycMac(ctx) {
   assert(lit(mac, "mac"), `Not a MACRO: ${mac}`); // TODO: SIGERR
   const clo = mac;
   const parms = cloParams(clo);
+  
+  // Check if we have a dotted parameter list
+  const dotIndex = parms.indexOf(".");
+  let regularParams, restParam;
+  
+  if (dotIndex !== -1) {
+    // We have a rest parameter
+    regularParams = parms.slice(0, dotIndex);
+    restParam = parms[dotIndex + 1]; // Get the parameter after the dot
+  } else {
+    // No rest parameter
+    regularParams = parms;
+    restParam = null;
+  }
+  
+  // Get values for regular parameters
+  const regularVals = vals.slice(0, regularParams.length);
+  
+  // Get values for rest parameter (if any)
+  const restVals = restParam ? vals.slice(regularParams.length) : [];
+  
   return {
     ...ctx,
     s: [
-      [cloBody(clo), env(clo, parms, vals)],
+      [cloBody(clo), env(clo, regularParams, restParam, regularVals, restVals)],
       [[smark, "call", "applycMac2", a]],
       ...butTop(ctx.s),
     ],
     r: butTop(ctx.r),
   };
 
-  function env(clo, parms, vals) {
-    assert(parms.length === vals.length, "INVALID APPLY ARGS NO"); // TODO: SIGERR
+  function env(clo, regularParams, restParam, regularVals, restVals) {
+    assert(regularParams.length === regularVals.length, "INVALID APPLY ARGS NO"); // TODO: SIGERR
     const a = { ...cloLexical(clo) };
-    for (let i = 0; i < parms.length; i++) {
-      a[parms[i]] = vals[i];
+    
+    // Bind regular parameters
+    for (let i = 0; i < regularParams.length; i++) {
+      a[regularParams[i]] = regularVals[i];
     }
+    
+    // Bind rest parameter if it exists
+    if (restParam) {
+      a[restParam] = restVals;
+    }
+    
     return a;
   }
 }
