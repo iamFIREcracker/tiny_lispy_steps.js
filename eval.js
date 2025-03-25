@@ -392,6 +392,23 @@ function parseParamsList(parms) {
   return { regularParams, restParam };
 }
 
+function createEnv(clo, regularParams, restParam, regularVals, restVals) {
+  assert(regularParams.length === regularVals.length, "INVALID APPLY ARGS NO"); // TODO: SIGERR
+  const a = { ...cloLexical(clo) };
+  
+  // Bind regular parameters
+  for (let i = 0; i < regularParams.length; i++) {
+    a[regularParams[i]] = regularVals[i];
+  }
+  
+  // Bind rest parameter if it exists
+  if (restParam) {
+    a[restParam] = restVals;
+  }
+  
+  return a;
+}
+
 function applycClo2(ctx) {
   const [[_smark, _call, _applycClo2, clo], _] = top(ctx.s);
   const parms = cloParams(clo);
@@ -411,26 +428,9 @@ function applycClo2(ctx) {
   
   return {
     ...ctx,
-    s: push([cloBody(clo), env(clo, regularParams, restParam, regularVals, restVals)], butTop(ctx.s)),
+    s: push([cloBody(clo), createEnv(clo, regularParams, restParam, regularVals, restVals)], butTop(ctx.s)),
     r: r2,
   };
-
-  function env(clo, regularParams, restParam, regularVals, restVals) {
-    assert(regularParams.length === regularVals.length, "INVALID APPLY ARGS NO"); // TODO: SIGERR
-    const a = { ...cloLexical(clo) };
-    
-    // Bind regular parameters
-    for (let i = 0; i < regularParams.length; i++) {
-      a[regularParams[i]] = regularVals[i];
-    }
-    
-    // Bind rest parameter if it exists
-    if (restParam) {
-      a[restParam] = restVals;
-    }
-    
-    return a;
-  }
 }
 
 function applycMac(ctx) {
@@ -451,29 +451,12 @@ function applycMac(ctx) {
   return {
     ...ctx,
     s: [
-      [cloBody(clo), env(clo, regularParams, restParam, regularVals, restVals)],
+      [cloBody(clo), createEnv(clo, regularParams, restParam, regularVals, restVals)],
       [[smark, "call", "applycMac2", a]],
       ...butTop(ctx.s),
     ],
     r: butTop(ctx.r),
   };
-
-  function env(clo, regularParams, restParam, regularVals, restVals) {
-    assert(regularParams.length === regularVals.length, "INVALID APPLY ARGS NO"); // TODO: SIGERR
-    const a = { ...cloLexical(clo) };
-    
-    // Bind regular parameters
-    for (let i = 0; i < regularParams.length; i++) {
-      a[regularParams[i]] = regularVals[i];
-    }
-    
-    // Bind rest parameter if it exists
-    if (restParam) {
-      a[restParam] = restVals;
-    }
-    
-    return a;
-  }
 }
 
 function applycMac2(ctx) {
