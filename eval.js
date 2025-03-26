@@ -358,8 +358,8 @@ function applycClo(ctx) {
   return {
     ...ctx,
     s: [
-      ...cloParams(top(ctx.r)).map((_, i) => [args[i] ?? "nil", a]),
-      [[smark, "call", "applycClo2", top(ctx.r)], a],
+      ...args.map((v) => [v, a]),
+      [[smark, "call", "applycClo2", top(ctx.r), args.length], a],
       ...butTop(ctx.s),
     ],
     r: butTop(ctx.r),
@@ -410,7 +410,7 @@ function createEnv(clo, regularParams, restParam, regularVals, restVals) {
 }
 
 function applycClo2(ctx) {
-  const [[_smark, _call, _applycClo2, clo], _] = top(ctx.s);
+  const [[_smark, _call, _applycClo2, clo, n], _] = top(ctx.s);
   const parms = cloParams(clo);
   
   const { regularParams, restParam } = parseParamsList(parms);
@@ -419,8 +419,8 @@ function applycClo2(ctx) {
   const regularVals = ctx.r.slice(0, regularParams.length).reverse();
   
   // Get values for rest parameter (if any)
-  const restVals = restParam ? 
-    ctx.r.slice(regularParams.length).reverse() : 
+  const restVals = restParam ?
+    ctx.r.slice(regularParams.length, regularParams.length + n).reverse() :
     [];
   
   // Update result stack
