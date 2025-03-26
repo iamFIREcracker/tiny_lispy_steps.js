@@ -369,7 +369,7 @@ function applycClo(ctx) {
 function parseParamsList(parms) {
   let regularParams = [];
   let restParam = null;
-  
+
   // Handle the case where parms is a single symbol (not an array)
   if (!Array.isArray(parms)) {
     // Treat a single symbol as a rest parameter
@@ -377,7 +377,7 @@ function parseParamsList(parms) {
   } else {
     // Check if we have a dotted parameter list
     const dotIndex = parms.indexOf(".");
-    
+
     if (dotIndex !== -1) {
       // We have a rest parameter
       regularParams = parms.slice(0, dotIndex);
@@ -388,47 +388,56 @@ function parseParamsList(parms) {
       restParam = null;
     }
   }
-  
+
   return { regularParams, restParam };
 }
 
 function createEnv(clo, regularParams, restParam, regularVals, restVals) {
   assert(regularParams.length === regularVals.length, "INVALID APPLY ARGS NO"); // TODO: SIGERR
   const a = { ...cloLexical(clo) };
-  
+
   // Bind regular parameters
   for (let i = 0; i < regularParams.length; i++) {
     a[regularParams[i]] = regularVals[i];
   }
-  
+
   // Bind rest parameter if it exists
   if (restParam) {
     a[restParam] = restVals;
   }
-  
+
   return a;
 }
 
 function applycClo2(ctx) {
   const [[_smark, _call, _applycClo2, clo, n], _] = top(ctx.s);
   const parms = cloParams(clo);
-  
+
   const { regularParams, restParam } = parseParamsList(parms);
-  
+
   // Get values for regular parameters
   const regularVals = ctx.r.slice(0, regularParams.length).reverse();
-  
+
   // Get values for rest parameter (if any)
-  const restVals = restParam ?
-    ctx.r.slice(regularParams.length, regularParams.length + n).reverse() :
-    [];
-  
+  const restVals = restParam
+    ? ctx.r.slice(regularParams.length, regularParams.length + n).reverse()
+    : [];
+
   // Update result stack
-  const r2 = ctx.r.slice(regularParams.length + (restParam ? restVals.length : 0));
-  
+  const r2 = ctx.r.slice(
+    regularParams.length + (restParam ? restVals.length : 0),
+  );
+
+  dbg(regularParams, restParam, restVals);
   return {
     ...ctx,
-    s: push([cloBody(clo), createEnv(clo, regularParams, restParam, regularVals, restVals)], butTop(ctx.s)),
+    s: push(
+      [
+        cloBody(clo),
+        createEnv(clo, regularParams, restParam, regularVals, restVals),
+      ],
+      butTop(ctx.s),
+    ),
     r: r2,
   };
 }
@@ -439,19 +448,22 @@ function applycMac(ctx) {
   assert(lit(mac, "mac"), `Not a MACRO: ${mac}`); // TODO: SIGERR
   const clo = mac;
   const parms = cloParams(clo);
-  
+
   const { regularParams, restParam } = parseParamsList(parms);
-  
+
   // Get values for regular parameters
   const regularVals = vals.slice(0, regularParams.length);
-  
+
   // Get values for rest parameter (if any)
   const restVals = restParam ? vals.slice(regularParams.length) : [];
-  
+
   return {
     ...ctx,
     s: [
-      [cloBody(clo), createEnv(clo, regularParams, restParam, regularVals, restVals)],
+      [
+        cloBody(clo),
+        createEnv(clo, regularParams, restParam, regularVals, restVals),
+      ],
       [[smark, "call", "applycMac2", a]],
       ...butTop(ctx.s),
     ],
