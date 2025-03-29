@@ -13,7 +13,7 @@ $ node-rlwrap
 - `SET`
 - `FN`
 - `QUOTE`
-- `QUASIQUOTE`, `UNQUOTE`
+- `QUASIQUOTE`, `UNQUOTE`, `UNQUOTE-SPLICING`
 - 'MACRO'
 - `IF`
 - `DEF`
@@ -57,7 +57,6 @@ The interpreter supports variable arguments (rest parameters) in three ways:
 - `PROMPT` / `ABORT`
 - `PAUSE` to pause the execution and allow you to inspect the current
   continuation.  To resume, simply call `evalc` or `evalca` that continuation.
-- SPLICE
 - BREAKPOINT to pause the evaluation: could wrap the whole execution around
   a `(PROMPT :DEBUG ... (lambda (k) k))`
 - JS-CATCH

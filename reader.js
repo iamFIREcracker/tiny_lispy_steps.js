@@ -55,8 +55,16 @@ function parseQuasiquote(s) {
 function parseUnquote(s) {
   if (s.peekChar() === ',') {
     s.readChar(); // consume the comma character
-    const expr = parseExpression(s);
-    return ["unquote", expr];
+    
+    // Check if the next character is '@' for splicing
+    if (s.peekChar() === '@') {
+      s.readChar(); // consume the @ character
+      const expr = parseExpression(s);
+      return ["unquote-splicing", expr];
+    } else {
+      const expr = parseExpression(s);
+      return ["unquote", expr];
+    }
   }
 }
 
