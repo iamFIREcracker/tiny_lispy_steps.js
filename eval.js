@@ -245,15 +245,6 @@ special("fn", function fn(ctx) {
   };
 });
 
-special("macro", function macro(ctx) {
-  const [[_, parms, ...body], a] = top(ctx.s);
-  return {
-    ...ctx,
-    s: butTop(ctx.s),
-    r: push(["lit", "mac", a, parms, prognify(body)], ctx.r),
-  };
-});
-
 function cloLexical(clo) {
   return clo[2];
 }
@@ -325,19 +316,6 @@ function dyn2(ctx) {
   };
 }
 
-// TODO: convert into a macro
-special("def", function def(ctx) {
-  const [[_, name, parms, ...body], a] = top(ctx.s);
-  return {
-    ...ctx,
-    s: push(
-      [["set", name, ["lit", "clo", a, parms, prognify(body)]]],
-      butTop(ctx.s),
-    ),
-  };
-});
-
-// TODO: convert into a macro
 special("mac", function mac(ctx) {
   const [[_, name, parms, ...body], a] = top(ctx.s);
   return {
@@ -563,7 +541,11 @@ function load2(ctx) {
 
 // const s = fs.readFileSync(guestToHost(arg), "utf-8");
 function run(e, g = {}) {
-  let cont = { s: [[e, []]], r: [], g };
+  const s = [
+    [["load", ["lit", "str", "bootstrap.lisp"]], {}],
+    [e, {}],
+  ];
+  let cont = { s, r: [], g };
   do {
     cont = evalc(cont);
   } while (cont.s.length > 0);
@@ -571,7 +553,11 @@ function run(e, g = {}) {
 }
 
 function srun(string, g = {}) {
-  let cont = { s: readAllFromString(string).map((e) => [e, {}]), r: [], g };
+  const s = [
+    [["load", ["lit", "str", "bootstrap.lisp"]], {}],
+    ...readAllFromString(string).map((e) => [e, {}]),
+  ];
+  let cont = { s, r: [], g };
   do {
     cont = evalc(cont);
     // dbg(cont);
