@@ -547,6 +547,7 @@ function load2(ctx) {
   };
 }
 
+// const s = fs.readFileSync(guestToHost(arg), "utf-8");
 function run(e, g = {}) {
   let cont = { s: [[e, []]], r: [], g };
   do {
