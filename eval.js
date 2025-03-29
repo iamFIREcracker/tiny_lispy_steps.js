@@ -90,7 +90,9 @@ function lookup(e, a, s, g) {
     binding(e, s)?.[0] ??
     a?.[e] ??
     g[e] ??
-    ((e === "*scope*" && ["ENV", a]) || (e === "*globe*" && ["ENV", g]))
+    ((e === "*scope*" && ["ENV", a]) ||
+      (e === "*globe*" && ["ENV", g]) ||
+      (e === "*global-this*" && ["lit", "ext", globalThis]))
   );
 }
 
@@ -537,6 +539,35 @@ function load2(ctx) {
     s: push([e, {}], butTop(ctx.s)),
     r: butTop(ctx.r),
   };
+}
+
+special("js-get", function jsGet(ctx) {
+  const [[_, o, k], a] = top(ctx.s);
+  return {
+    ...ctx,
+    s: push(
+      [o, a],
+      push([k, a], push([[smark, "call", "jsGet2"]], butTop(ctx.s))),
+    ),
+  };
+});
+
+function jsGet2(ctx) {
+  const [k, o, ...r2] = ctx.r;
+
+  return {
+    ...ctx,
+    s: butTop(ctx.s),
+    r: push(get(o, k), r2),
+  };
+
+  function get(o, k) {
+    assert(lit(o, "ext"), `Not a EXT: ${o}`); // TODO: SIGERR
+    if (lit(k, "str")) {
+      return ['lit', 'ext', o[2][k[2]]];
+    }
+    return ['lit', 'ext', o[2][k]];
+  }
 }
 
 // const s = fs.readFileSync(guestToHost(arg), "utf-8");
