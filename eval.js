@@ -366,49 +366,6 @@ function applycClo(ctx) {
   };
 }
 
-function parseParamsList(parms) {
-  let regularParams = [];
-  let restParam = null;
-
-  // Handle the case where parms is a single symbol (not an array)
-  if (!Array.isArray(parms)) {
-    // Treat a single symbol as a rest parameter
-    restParam = parms;
-  } else {
-    // Check if we have a dotted parameter list
-    const dotIndex = parms.indexOf(".");
-
-    if (dotIndex !== -1) {
-      // We have a rest parameter
-      regularParams = parms.slice(0, dotIndex);
-      restParam = parms[dotIndex + 1]; // Get the parameter after the dot
-    } else {
-      // No rest parameter
-      regularParams = parms;
-      restParam = null;
-    }
-  }
-
-  return { regularParams, restParam };
-}
-
-function createEnv(clo, regularParams, restParam, regularVals, restVals) {
-  assert(regularParams.length === regularVals.length, "INVALID APPLY ARGS NO"); // TODO: SIGERR
-  const a = { ...cloLexical(clo) };
-
-  // Bind regular parameters
-  for (let i = 0; i < regularParams.length; i++) {
-    a[regularParams[i]] = regularVals[i];
-  }
-
-  // Bind rest parameter if it exists
-  if (restParam) {
-    a[restParam] = restVals;
-  }
-
-  return a;
-}
-
 function applycClo2(ctx) {
   const [[_smark, _call, _applycClo2, clo, n], _] = top(ctx.s);
   const parms = cloParams(clo);
@@ -478,6 +435,49 @@ function applycMac2(ctx) {
     s: push([top(ctx.r), a], butTop(ctx.s)),
     r: butTop(ctx.r),
   };
+}
+
+function parseParamsList(parms) {
+  let regularParams = [];
+  let restParam = null;
+
+  // Handle the case where parms is a single symbol (not an array)
+  if (!Array.isArray(parms)) {
+    // Treat a single symbol as a rest parameter
+    restParam = parms;
+  } else {
+    // Check if we have a dotted parameter list
+    const dotIndex = parms.indexOf(".");
+
+    if (dotIndex !== -1) {
+      // We have a rest parameter
+      regularParams = parms.slice(0, dotIndex);
+      restParam = parms[dotIndex + 1]; // Get the parameter after the dot
+    } else {
+      // No rest parameter
+      regularParams = parms;
+      restParam = null;
+    }
+  }
+
+  return { regularParams, restParam };
+}
+
+function createEnv(clo, regularParams, restParam, regularVals, restVals) {
+  assert(regularParams.length === regularVals.length, "INVALID APPLY ARGS NO"); // TODO: SIGERR
+  const a = { ...cloLexical(clo) };
+
+  // Bind regular parameters
+  for (let i = 0; i < regularParams.length; i++) {
+    a[regularParams[i]] = regularVals[i];
+  }
+
+  // Bind rest parameter if it exists
+  if (restParam) {
+    a[restParam] = restVals;
+  }
+
+  return a;
 }
 
 special("progn", function progn(ctx) {
