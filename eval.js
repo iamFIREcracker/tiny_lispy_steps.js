@@ -385,7 +385,6 @@ function applycClo2(ctx) {
     regularParams.length + (restParam ? restVals.length : 0),
   );
 
-  dbg(regularParams, restParam, restVals);
   return {
     ...ctx,
     s: push(
