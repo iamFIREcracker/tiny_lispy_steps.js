@@ -160,7 +160,7 @@ special("quasiquote", function quasiquote(ctx) {
 
 function quasiquote2(ctx) {
   const [[_smark, _call, _qq2, e, n]] = top(ctx.s);
-  const vals = ctx.r.slice(0, n);
+  const vals = ctx.r.slice(0, n).reverse();
   const r2 = ctx.r.slice(n);
   const e2 = reassemble(e);
 
