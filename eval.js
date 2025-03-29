@@ -130,15 +130,14 @@ special("quote", function quote(ctx) {
 special("quasiquote", function quasiquote(ctx) {
   const [[_, e], a] = top(ctx.s);
   const ee = [];
-  const splices = []; // Track which expressions are splices
-  
+
   unquotes(e);
 
   return {
     ...ctx,
     s: [
       ...ee.map((e2) => [e2, a]),
-      [[smark, "call", "quasiquote2", e, ee.length, splices]],
+      [[smark, "call", "quasiquote2", e, ee.length]],
       ...butTop(ctx.s),
     ],
     r: butTop(ctx.r),
@@ -147,10 +146,8 @@ special("quasiquote", function quasiquote(ctx) {
   function unquotes(e) {
     if (taggedList(e, "unquote")) {
       ee.push(e[1]);
-      splices.push(false);
     } else if (taggedList(e, "unquote-splicing")) {
       ee.push(e[1]);
-      splices.push(true);
     } else if (taggedList(e, "quote")) {
       return;
     } else if (Array.isArray(e)) {
@@ -162,7 +159,7 @@ special("quasiquote", function quasiquote(ctx) {
 });
 
 function quasiquote2(ctx) {
-  const [[_smark, _call, _qq2, e, n, splices]] = top(ctx.s);
+  const [[_smark, _call, _qq2, e, n]] = top(ctx.s);
   const vals = ctx.r.slice(0, n);
   const r2 = ctx.r.slice(n);
   const e2 = reassemble(e);
@@ -172,31 +169,19 @@ function quasiquote2(ctx) {
   function reassemble(e) {
     if (taggedList(e, "unquote")) {
       const val = vals.shift();
-      splices.shift(); // Remove the corresponding splice flag
       return val;
     } else if (taggedList(e, "unquote-splicing")) {
       const val = vals.shift();
-      splices.shift(); // Remove the corresponding splice flag
-      return val; // This will be handled by the array case
+      return val;
     } else if (taggedList(e, "quote")) {
       return e;
     } else if (Array.isArray(e)) {
-      // Handle splicing within arrays
       let result = [];
       for (let i = 0; i < e.length; i++) {
+        const v = reassemble(e[i]);
         if (taggedList(e[i], "unquote-splicing")) {
-          // Get the value to splice
-          const spliceVal = reassemble(e[i]);
-          // Only splice if it's an array, otherwise treat as a single element
-          if (Array.isArray(spliceVal)) {
-            result = result.concat(spliceVal);
-          } else {
-            result.push(spliceVal);
-          }
-        } else {
-          // For regular elements (including unquote), just process and add them
-          result.push(reassemble(e[i]));
-        }
+          result.push(...v);
+        } else result.push(v);
       }
       return result;
     } else {
