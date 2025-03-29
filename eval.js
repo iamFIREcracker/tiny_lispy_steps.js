@@ -527,6 +527,26 @@ function let2(ctx) {
   };
 }
 
+special("load", function load(ctx) {
+  const [[_, name], a] = top(ctx.s);
+  return {
+    ...ctx,
+    s: push([name, a], push([[smark, "call", "load2"]], butTop(ctx.s))),
+  };
+});
+
+function load2(ctx) {
+  assert(lit(ctx.r[0], "str"), `Not a STRING: ${ctx.r[0]}`); // TODO: SIGERR
+  const name = ctx.r[0][2];
+  const e = prognify(readAllFromString(fs.readFileSync(name, "utf-8")));
+
+  return {
+    ...ctx,
+    s: push([e, {}], butTop(ctx.s)),
+    r: butTop(ctx.r),
+  };
+}
+
 function run(e, g = {}) {
   let cont = { s: [[e, []]], r: [], g };
   do {

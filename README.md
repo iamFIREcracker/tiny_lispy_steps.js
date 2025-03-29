@@ -20,6 +20,7 @@ $ node-rlwrap
 - 'MAC'
 - `PROGN`
 - `LET`
+- `LOAD`
 
 ### JavaScript interoperability
 
