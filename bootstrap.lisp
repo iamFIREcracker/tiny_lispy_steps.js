@@ -7,7 +7,7 @@
   `(set ,n (fn ,@rest)))
 
 (mac macro args
-  `(lit mac (fn ,@args)))
+  `(list 'lit 'mac (fn ,@args)))
 
 (mac let (parm val . body)
   `((fn (,parm) ,@body) ,val))
