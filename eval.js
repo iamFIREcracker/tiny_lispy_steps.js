@@ -499,28 +499,6 @@ function progn2(ctx) {
   };
 }
 
-special("let", function let(ctx) {
-  const [[_, parm, e2, ...body], a] = top(ctx.s);
-  return {
-    ...ctx,
-    s: push(
-      [e2, a],
-      push([[smark, "call", "let2", parm, prognify(body)], a], butTop(ctx.s)),
-    ),
-  };
-});
-
-function let2(ctx) {
-  const [[_smark, _call, _let2, parm, body], a] = top(ctx.s);
-  const val = ctx.r[0];
-  const r2 = ctx.r.slice(1);
-  return {
-    ...ctx,
-    s: push([body, { ...a, [parm]: val }], butTop(ctx.s)),
-    r: r2,
-  };
-}
-
 special("load", function load(ctx) {
   const [[_, name], a] = top(ctx.s);
   return {
@@ -564,9 +542,9 @@ function jsGet2(ctx) {
   function get(o, k) {
     assert(lit(o, "ext"), `Not a EXT: ${o}`); // TODO: SIGERR
     if (lit(k, "str")) {
-      return ['lit', 'ext', o[2][k[2]]];
+      return ["lit", "ext", o[2][k[2]]];
     }
-    return ['lit', 'ext', o[2][k]];
+    return ["lit", "ext", o[2][k]];
   }
 }
 
