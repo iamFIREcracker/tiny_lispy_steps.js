@@ -238,15 +238,6 @@ function where(e, a, s, g) {
   }
 }
 
-special("fn", function fn(ctx) {
-  const [[_, parms, ...body], a] = top(ctx.s);
-  return {
-    ...ctx,
-    s: butTop(ctx.s),
-    r: push(["lit", "clo", a, parms, prognify(body)], ctx.r),
-  };
-});
-
 function cloLexical(clo) {
   return clo[2];
 }
