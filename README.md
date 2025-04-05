@@ -21,6 +21,7 @@ $ node-rlwrap
 - `PROGN`
 - `LET`
 - `LOAD`
+- `UVAR`
 
 ### JavaScript interoperability
 

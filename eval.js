@@ -539,13 +539,25 @@ function jsGet2(ctx) {
   }
 }
 
+const GENSYM_PREFIX = "#:g:";
+
+special("uvar", function uvar(ctx) {
+  const v = `${GENSYM_PREFIX}${ctx.u}`;
+  return {
+    ...ctx,
+    u: ctx.u + 1,
+    s: butTop(ctx.s),
+    r: push(v, ctx.r),
+  };
+});
+
 // const s = fs.readFileSync(guestToHost(arg), "utf-8");
 function run(e, g = {}) {
   const s = [
     [["load", ["lit", "str", "bootstrap.lisp"]], {}],
     [e, {}],
   ];
-  let cont = { s, r: [], g };
+  let cont = { s, r: [], g, u: 0 };
   do {
     cont = evalc(cont);
   } while (cont.s.length > 0);
@@ -557,7 +569,7 @@ function srun(string, g = {}) {
     [["load", ["lit", "str", "bootstrap.lisp"]], {}],
     ...readAllFromString(string).map((e) => [e, {}]),
   ];
-  let cont = { s, r: [], g };
+  let cont = { s, r: [], g, u: 0 };
   do {
     cont = evalc(cont);
     // dbg(cont);
